@@ -5,7 +5,7 @@ parser = argparse.ArgumentParser()
 
 ##paths option
 parser.add_argument('-datadir', help = 'Absolute path to the directory that holds the dataset', \
-	type = str, default = '/home/ssy/workspace')
+	type = str, default = '/home/ssy/workspace/dataset')
 parser.add_argument('-resultdir', \
 	help = '(Relative path to) directory in which to store logs, models, plots, etc.', \
 	type = str, default = 'result')
@@ -13,7 +13,7 @@ parser.add_argument('-resultdir', \
 ##Model option
 parser.add_argument('-loadModel', help='load pretrained weights, if you want add pretrained weights, give path, else None',default=None)
 parser.add_argument('-modelType', help='Type of the model to be loaded:1. vinet_batchnorm 2. vinet 3. our_model', type = str.lower, \
-                    choices = ['vinet_batchnorm', 'vinet', 'our_model'],default = None)
+                    choices = ['vinet_batchnorm', 'vinet', 'our_model'],default = 'vinet')
 parser.add_argument('-activation', help='Actication function to be used', type = str.lower, choices=['relu','selu'], default= 'relu')
 parser.add_argument('-imageWidth', help = 'Width of the input image', type = int, default = 640)
 parser.add_argument('-imageHeight', help = 'Height of the input image', type = int, default = 192)
