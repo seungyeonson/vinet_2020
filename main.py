@@ -87,10 +87,12 @@ if arg.tensorboardX is True:
 
 # Get the definition of the model
 if arg.modelType == 'vinet' or arg.modelType is None:
+	pass
 	# Model definition without batchnorm
 	# deepVO = DeepVO(cmd.imageWidth, cmd.imageHeight, activation = cmd.activation, parameterization = cmd.outputParameterization, \
 	# 	numLSTMCells = cmd.numLSTMCells, hidden_units_LSTM = [1024, 1024])
 elif arg.modelType == 'vinet_batchnorm':
+	pass
 	# Model definition with batchnorm
 	# deepVO = DeepVO(activation = cmd.activation, parameterization = cmd.outputParameterization, \
 	# 	batchnorm = True, flownet_weights_path = cmd.loadModel)
@@ -100,6 +102,7 @@ elif arg.modelType == 'our_model':
 # Load a pretrained DeepVO model
 if arg.modelType == 'vinet':
 	# deepVO = torch.load(cmd.loadModel)
+	pass
 else:
 	# Initialize weights for fully connected layers and for LSTMCells
 	# deepVO.init_weights()
