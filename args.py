@@ -5,7 +5,7 @@ parser = argparse.ArgumentParser()
 
 ##paths option
 parser.add_argument('-datadir', help = 'Absolute path to the directory that holds the dataset', \
-	type = str, default = '/home/mongsil/workspace/gimotti/dataset')
+	type = str, default = '/home/ssy/workspace/dataset')
 parser.add_argument('-resultdir', \
 	help = '(Relative path to) directory in which to store logs, models, plots, etc.', \
 	type = str, default = 'result')
