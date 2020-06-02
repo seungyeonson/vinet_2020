@@ -111,9 +111,9 @@ def parse_uzh_calib(data_path):
             f.write("\n".join(lines_calib))
 
 if __name__ == '__main__' :
-    # 폴더의 모든 이미지 처리함.
-    change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
-    change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
+    ## 폴더의 모든 이미지 처리함.
+    # change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
+    # change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
 
-    # result 파일에서 칼리브레이션 알아서 빼주고 그 폴더에 calibration.csv로 저장.
-    parse_uzh_calib('/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/calibrations/')
+    ## result 파일에서 칼리브레이션 알아서 빼주고 그 폴더에 calibration.csv로 저장.
+    # parse_uzh_calib('/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/calibrations/')

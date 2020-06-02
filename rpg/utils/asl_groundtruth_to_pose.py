@@ -26,7 +26,7 @@ if __name__ == '__main__':
     Extracts pose from a csv file in ASL format to space separated format.
     Quaternion is ordered as [x y z w]
     ''')
-    parser.add_argument('gt', help='Ground truth csv')
+    parser.add_argument('gt', help='Ground truth csv', default='/')
     parser.add_argument('--output', default='groundtruth.txt')
     args = parser.parse_args()
 
