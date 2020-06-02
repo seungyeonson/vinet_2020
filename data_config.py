@@ -1,6 +1,9 @@
 import os
+import args
 
-def change_euroc_image_name(data_path) :
+arg = args.arguments
+
+def change_euroc_image_name(data_path=arg.datadir + '/' + arg.dataset + '/images/') :
     '''
     Convert name of EuRoC imagefiles('439388593349.png'(Timestamp)) to 6-digit index('000001.png')
     And, modify information text of images ('left_images.csv') like below :
@@ -35,12 +38,12 @@ def change_euroc_image_name(data_path) :
                 os.rename(image_path + '/' + orig, image_path + '/' + new)
 
 
-def change_uzh_image_name(data_path) :
+def change_uzh_image_name(data_path=arg.datadir + '/' + arg.dataset + '/images/') :
     '''
     Convert name of UZH imagefiles('1.png') to 6-digit index('000001.png')
     And, modify information text of images ('left_images.csv') like below :
         #   id  timestamp                   image_name(overwrited)
-            0   1540824274.074749231339     001343.png
+            0   1540824274.074749231339     000001.png
 
     Example for use :
         change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
@@ -54,7 +57,7 @@ def change_uzh_image_name(data_path) :
         for dir in ['left', 'right']:
             image_path = os.path.join(path, dir)
             desc_path = os.path.join(path, dir + '_images.txt')
-            image_names = list(map(lambda x: int(x[:-4]), os.listdir(image_path)))
+            image_names = sorted(list(map(lambda x: int(x[:-4]), os.listdir(image_path))))
 
             ## rename images
             for orig in image_names:
@@ -73,7 +76,7 @@ def change_uzh_image_name(data_path) :
                     row[2] = '{0:06d}.png'.format(image_names[idx])
                     f.write(' '.join(row) + '\n')
 
-def parse_uzh_calib(data_path):
+def parse_uzh_calib(data_path=arg.datadir + '/' + arg.dataset + '/calibrations/'):
     '''
     This function parse and convert calibration file of UZH dataset,
     to use transform_trajectory, to apply calibration transfromation.
@@ -114,6 +117,9 @@ if __name__ == '__main__' :
     ## 폴더의 모든 이미지 처리함.
     # change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
     # change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
+    change_uzh_image_name(arg.datadir + '/' + 'uzh' + '/images/')
+    change_euroc_image_name(arg.datadir + '/' + 'euroc' + '/images/')
 
     ## result 파일에서 칼리브레이션 알아서 빼주고 그 폴더에 calibration.csv로 저장.
     # parse_uzh_calib('/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/calibrations/')
+    parse_uzh_calib(arg.datadir + '/' + arg.dataset + '/calibrations/')
