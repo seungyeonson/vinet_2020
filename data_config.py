@@ -22,15 +22,13 @@ def change_euroc_image_name(data_path=arg.datadir + '/' + arg.dataset + '/images
         path = os.path.join(path, os.listdir(path)[0])      # ...../euroc/images/03/V2_01_easy
         for dir in ['left','right'] :
             image_path = os.path.join(path, dir)
-            desc_path = os.path.join(path, dir + '_image.csv')
-            new_desc_path = os.path.join(path, dir + '_images.csv')
+            desc_path = os.path.join(path, dir + '_images.csv')
 
             ## modify csv file
             df = pd.read_csv(desc_path)
             newnames = ['{0:06d}.png'.format(i) for i in range(0, df.shape[0])]
             df['newname'] = newnames
             df.to_csv(desc_path)
-            os.rename(desc_path, new_desc_path)
 
             ## rename images
             for orig, new in zip(df['filename'], newnames) :

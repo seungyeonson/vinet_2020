@@ -140,13 +140,13 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
 
             gt_timestamps = None
             image_timestamps = None
-            with open(pose_path + '/groundtruth_state_groundtruth_estimate.csv', 'r') as f:
+            with open(pose_path + '/trimed_groundtruth.csv', 'r') as f:
                 gts = list(csv.reader(f, delimiter=',', quotechar='|'))
                 header = gts[0]
                 gts = gts[1:]
             gt_timestamps = [float(row[0]) for row in gts]
 
-            with open(image_path + '/left_images.csv', 'r') as f:
+            with open(image_path + '/trimed_left_images.csv', 'r') as f:
                 image_timestamps = list(csv.reader(f, delimiter=',', quotechar='|'))[1:]
             image_timestamps = [float(row[1]) for row in image_timestamps]
 
@@ -165,7 +165,7 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
                 foundIdx = getClosestIndex(searchTime, searchStartIndex, gt_timestamps)
                 if foundIdx is None: continue
                 searchStartIndex = foundIdx
-                sampledGT.append(gts[foundIdx])         # TODO: 나중에 타임스탬프 같은 것들에 대해 처리가 필요할듯 ( 나머지 값들은 그대로, 타임스탬프만 이미지에 맞추던지 )
+                sampledGT.append(gts[foundIdx])
 
             with open(pose_path + '/sampled_groundtruth.csv', 'w') as f :
                 f.write(','.join(header) + '\n')
@@ -212,7 +212,7 @@ def relative_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
             relative_pose = [timestamp, X, Y, Z, relative_rot[1], relative_rot[2], relative_rot[3], relative_rot[0]]
             trajectory_relative.append(relative_pose)
 
-        with open(pose_path + '/sampled_relative_groundtruth.txt', 'w+') as f:
+        with open(pose_path + '/sampled_relative_groundtruth.txt', 'w') as f:
             # tmpStr = " ".join(trajectory_abs[0])
             f.write(header)
 
@@ -251,7 +251,7 @@ def R6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
             se3R6 = xyzQuaternion2se3_(arr)
             traj_rel_se3R6.append(se3R6)
 
-        with open(pose_path + '/sampled_relative_R6_groundtruth.txt', 'w+') as f:
+        with open(pose_path + '/sampled_relative_R6_groundtruth.txt', 'w') as f:
             # f.write(header)
             f.write('# timestamp ang_vel_x ang_vel_y ang_vel_z lin_acc_x lin_acc_y lin_acc_z\n')
 
@@ -268,6 +268,6 @@ def R6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
         print('The length of traj_rel: ', len(traj_rel), "; The length of traj_rel_se3R6: ", len(traj_rel_se3R6))
 
 if __name__ == "__main__" :
-    # sampling_GT(type_dataset='euroc')
-    # relative_GT(type_dataset='euroc')
+    sampling_GT(type_dataset='euroc')
+    relative_GT(type_dataset='euroc')
     R6_GT(type_dataset='euroc')
