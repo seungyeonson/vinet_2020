@@ -1,5 +1,6 @@
 import os
 import args
+import pandas as pd
 
 arg = args.arguments
 
@@ -13,8 +14,6 @@ def change_euroc_image_name(data_path=arg.datadir + '/' + arg.dataset + '/images
     Example for use :
         change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
     '''
-
-    import pandas as pd
 
     DATA_PATH = data_path
     seqs = os.listdir(DATA_PATH)# ['03', '08', etc]
@@ -74,7 +73,7 @@ def change_uzh_image_name(data_path=arg.datadir + '/' + arg.dataset + '/images/'
                     row = lines[i].split(' ')
                     idx = int(row[0])
                     row[2] = '{0:06d}.png'.format(image_names[idx])
-                    f.write(' '.join(row) + '\n')
+                    f.write(' '.join(row))
 
 def parse_uzh_calib(data_path=arg.datadir + '/' + arg.dataset + '/calibrations/'):
     '''
@@ -117,9 +116,10 @@ if __name__ == '__main__' :
     ## 폴더의 모든 이미지 처리함.
     # change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
     # change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
-    change_uzh_image_name(arg.datadir + '/' + 'uzh' + '/images/')
-    change_euroc_image_name(arg.datadir + '/' + 'euroc' + '/images/')
+    # change_uzh_image_name(arg.datadir + '/' + 'uzh' + '/images/')
+    # change_euroc_image_name(arg.datadir + '/' + 'euroc' + '/images/')
 
     ## result 파일에서 칼리브레이션 알아서 빼주고 그 폴더에 calibration.csv로 저장.
     # parse_uzh_calib('/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/calibrations/')
-    parse_uzh_calib(arg.datadir + '/' + arg.dataset + '/calibrations/')
+    # parse_uzh_calib(arg.datadir + '/' + arg.dataset + '/calibrations/')
+    pass
