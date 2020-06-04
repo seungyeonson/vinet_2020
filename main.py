@@ -23,7 +23,7 @@ from tqdm import tqdm, trange
 
 # Other project files with definitions
 import args
-
+from Dataloader import Dataloader
 #Parse arguments
 arg = args.arguments
 
@@ -120,4 +120,70 @@ print('Loaded! Good to launch!')
 ########################################################################
 ###  Main loop ###
 ########################################################################
+rotLosses_train = []
+transLosses_train = []
+totalLosses_train = []
+rotLosses_val = []
+transLosses_val = []
+totalLosses_val = []
 
+f2fLosses_train = []
+f2fLosses_val = []
+bestValLoss = np.inf
+
+
+# Create datasets for the current epoch
+# train_seq = [0, 1, 2, 8, 9]
+# train_startFrames = [0, 0, 0, 0, 0]
+# train_endFrames = [4540, 1100, 4660, 4070, 1590]
+# val_seq = [3, 4, 5, 6, 7, 10]
+# val_startFrames = [0, 0, 0, 0, 0, 0]
+# val_endFrames = [800, 270, 2760, 1100, 1100, 1200]
+
+#for test
+train_seq = [1]
+train_startFrames = [0]
+train_endFrames = [4161]
+val_seq = [0]
+val_startFrames = [0]
+val_endFrames = [2551]
+
+
+for epoch in range(arg.nepochs):
+	
+	print('===============> Starting epoch: '+str(epoch+1) + '/'+str(arg.nepochs))
+
+	train_seq_cur_epoch = []
+	train_startFrames_cur_epoch = []
+	train_endFrames_cur_epoch = []
+	# Take each sequence and split it into chunks
+	for s in range(len(train_seq)):
+		train_seq_cur_epoch.append(train_seq[s])
+		train_startFrames_cur_epoch.append(train_startFrames[s])
+		train_endFrames_cur_epoch.append(train_endFrames[s])
+
+	#train split by sequence
+	permutation = np.random.permutation(len(train_seq_cur_epoch))
+	train_seq_cur_epoch = [train_seq_cur_epoch[p] for p in permutation]
+	train_startFrames_cur_epoch = [train_startFrames_cur_epoch[p] for p in permutation]
+	train_endFrames_cur_epoch = [train_endFrames_cur_epoch[p] for p in permutation]
+
+	train_data = Dataloader(arg.datadir, train_seq_cur_epoch, train_startFrames_cur_epoch, \
+		train_endFrames_cur_epoch, width = arg.imageWidth, height = arg.imageHeight, outputFrame = arg.outputFrame)
+	val_data = Dataloader(arg.datadir, val_seq, val_startFrames, val_endFrames, \
+		width = arg.imageWidth, height = arg.imageHeight, outputFrame = arg.outputFrame)
+
+	# Initialize a trainer (Note that any accumulated gradients on the model are flushed
+	# upon creation of this Trainer object)
+	trainer = Trainer(arg, epoch, deepVO, train_data, val_data, criterion, optimizer, \
+					  scheduler=None)
+
+	# Training loop
+	print('===> Training: ' + str(epoch + 1) + '/' + str(arg.nepochs))
+	startTime = time.time()
+	rotLosses_train_cur, transLosses_train_cur, totalLosses_train_cur = trainer.train()
+	print('Train time: ', time.time() - startTime)
+
+	rotLosses_train += rotLosses_train_cur
+	transLosses_train += transLosses_train_cur
+	totalLosses_train += totalLosses_train_cur

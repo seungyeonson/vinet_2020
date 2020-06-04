@@ -19,7 +19,7 @@ parser.add_argument('-imageWidth', help = 'Width of the input image', type = int
 parser.add_argument('-imageHeight', help = 'Height of the input image', type = int, default = 192)
 
 ##Dataset option
-parser.add_argument('-dataset', help='dataset to be used for training the network, 1. uzh, 2. euroc, 3. ',choices=['uzh','euroc',''], default = 'uzh')
+parser.add_argument('-dataset', help='dataset to be used for training the network, 1. uzh, 2. euroc, 3. ',choices=['uzh','euroc',''], default = 'euroc')
 
 ##Hyperparameter
 parser.add_argument('-lr', help = 'Learning rate', type = float, default = 1e-4)
