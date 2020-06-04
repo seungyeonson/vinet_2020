@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import os
 import args
 import pandas as pd
@@ -114,10 +116,10 @@ if __name__ == '__main__' :
     ## 폴더의 모든 이미지 처리함.
     # change_euroc_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/images/")
     # change_uzh_image_name("/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/images/")
-    # change_uzh_image_name(arg.datadir + '/' + 'uzh' + '/images/')
-    # change_euroc_image_name(arg.datadir + '/' + 'euroc' + '/images/')
+    change_uzh_image_name(arg.datadir + '/' + 'uzh' + '/images/')
+    #change_euroc_image_name(arg.datadir + '/' + 'euroc' + '/images/')
 
     ## result 파일에서 칼리브레이션 알아서 빼주고 그 폴더에 calibration.csv로 저장.
     # parse_uzh_calib('/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/uzh/calibrations/')
-    # parse_uzh_calib(arg.datadir + '/' + arg.dataset + '/calibrations/')
-    pass
+    #parse_uzh_calib(arg.datadir + '/' + arg.dataset + '/calibrations/')
+
