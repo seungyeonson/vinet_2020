@@ -268,6 +268,6 @@ def R6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
         print('The length of traj_rel: ', len(traj_rel), "; The length of traj_rel_se3R6: ", len(traj_rel_se3R6))
 
 if __name__ == "__main__" :
-    # sampling_GT(type_dataset='euroc')
-    # relative_GT(type_dataset='euroc')
+    sampling_GT(type_dataset='euroc')
+    relative_GT(type_dataset='euroc')
     R6_GT(type_dataset='euroc')

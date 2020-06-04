@@ -120,49 +120,27 @@ class Dataloader(Dataset):
 		inputTensor = (pair.float()).cuda()
 		inputTensor = inputTensor * torch.from_numpy(np.asarray([1. / 255.], \
 																dtype = np.float32)).cuda()
-
 		# Load pose ground-truth
 		curposeDir = os.path.join(self.poseDir, str(seqIdx).zfill(2))
-		if arg.dataset=='uzh':
-			poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], +''+ '.txt'), \
-						   dtype = np.float32)
-		elif arg.datset=='euroc':
-			poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], +'' + '.csv'), \
-							   dtype=np.float32)
-		# If using global transformations, load GT transformation of startFrame wrt world
-		if self.outputFrame == 'global':
-			pose1 = np.vstack([np.reshape(poses[self.startFrames[seqKey]].astype(np.float32), (3, 4)), \
-							   [[0., 0., 0., 1.]]])
-		# Else load GT transformation of frame1 wrt world
-		elif self.outputFrame == 'local':
-			pose1 = np.vstack([np.reshape(poses[frame1].astype(np.float32), (3, 4)), \
-							   [[0., 0., 0., 1.]]])
-		# Regardless of using local or global transformations, we need to load GT transformation
-		# of frame2 wrt world
-		pose2 = np.vstack([np.reshape(poses[frame2].astype(np.float32), (3, 4)), \
-						   [[0., 0., 0., 1.]]])
-		# Compute relative pose from frame1/startFrame (local/global) to frame2
-		pose2wrt1 = np.dot(np.linalg.inv(pose1), pose2)
-		R = pose2wrt1[0:3,0:3]
-		t = (torch.from_numpy(pose2wrt1[0:3,3]).view(-1,3)).float().cuda()
 
-		# Default parameterization: representation rotations as axis-angle vectors
-		if self.parameterization == 'default' or self.parameterization == 'mahalanobis':
-			axisAngle = (torch.from_numpy(np.asarray(rotMat_to_axisAngle(R))).view(-1,3)).float().cuda()
-			if self.parameterization == 'default':
-				return inputTensor, axisAngle, t, seqIdx, frame1, frame2, endOfSequence
-			elif self.parameterization == 'mahalanobis':
-				return inputTensor, torch.cat((axisAngle, t), dim = 1), None, seqIdx, frame1, frame2, endOfSequence
-		# Quaternion parameterization: representation rotations as quaternions
-		elif self.parameterization == 'quaternion':
-			quat = np.asarray(rotMat_to_quat(R)).reshape((1,4))
-			quaternion = (torch.from_numpy(quat).view(-1,4)).float().cuda()
-			return inputTensor, quaternion, t, seqIdx, frame1, frame2, endOfSequence
-		# Euler parameterization: representation rotations as Euler angles
-		elif self.parameterization == 'euler':
-			rx, ry, rz = rotMat_to_euler(R, seq = 'xyz')
-			euler = (torch.FloatTensor([rx, ry, rz]).view(-1,3)).cuda()
-			return inputTensor, euler, t, seqIdx, frame1, frame2, endOfSequence
+		poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], 'sampled_groundtruth.txt'), \
+							   dtype=np.float32)
+		relative_R6 = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
+							   dtype=np.float32)
+
+		pose1 = np.vstack([poses[frame1].astype(np.float32)])
+		#pose1.shape = (1,8) [[timestamp,tx, ty, tz, qx, qy, qz, qw]]
+
+
+		#relative R6 gt
+
+		pose2 =np.vstack([relative_R6[frame1].astype(np.float32)])
+		pose2 = pose2[:,1:]
+		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
+
+		imu=0 #아직처리안함
+		return inputTensor, pose2, imu, seqIdx, frame1, frame2, endOfSequence
+
 	def preprocessImg(self, img):
 
 		# # Subtract the mean R,G,B pixels
@@ -178,7 +156,3 @@ class Dataloader(Dataset):
 		img = img.permute(2,0,1)
 
 		return img
-
-# return (seqIdx, frame1, frame2)
-train_data = Dataloader(arg.datadir, [0], [0],[1100], width = arg.imageWidth, height = arg.imageHeight)
-train_data[0]

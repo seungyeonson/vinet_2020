@@ -10,6 +10,7 @@ Main script: Train and Test VINet on the euroc, uzh, etc...
 import matplotlib
 matplotlib.use('Agg')
 
+from model import VINet
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -89,8 +90,8 @@ if arg.tensorboardX is True:
 if arg.modelType == 'vinet' or arg.modelType is None:
 	pass
 	# Model definition without batchnorm
-	# deepVO = DeepVO(cmd.imageWidth, cmd.imageHeight, activation = cmd.activation, parameterization = cmd.outputParameterization, \
-	# 	numLSTMCells = cmd.numLSTMCells, hidden_units_LSTM = [1024, 1024])
+	VINet = VINet(arg.imageWidth, arg.imageHeight, activation = arg.activation, \
+	 	numLSTMCells = arg.numLSTMCells, hidden_units_LSTM = [1024, 1024])
 elif arg.modelType == 'vinet_batchnorm':
 	pass
 	# Model definition with batchnorm
@@ -169,9 +170,9 @@ for epoch in range(arg.nepochs):
 	train_endFrames_cur_epoch = [train_endFrames_cur_epoch[p] for p in permutation]
 
 	train_data = Dataloader(arg.datadir, train_seq_cur_epoch, train_startFrames_cur_epoch, \
-		train_endFrames_cur_epoch, width = arg.imageWidth, height = arg.imageHeight, outputFrame = arg.outputFrame)
+		train_endFrames_cur_epoch, width = arg.imageWidth, height = arg.imageHeight)
 	val_data = Dataloader(arg.datadir, val_seq, val_startFrames, val_endFrames, \
-		width = arg.imageWidth, height = arg.imageHeight, outputFrame = arg.outputFrame)
+		width = arg.imageWidth, height = arg.imageHeight)
 
 	# Initialize a trainer (Note that any accumulated gradients on the model are flushed
 	# upon creation of this Trainer object)
