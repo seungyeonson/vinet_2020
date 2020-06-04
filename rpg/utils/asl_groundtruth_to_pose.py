@@ -22,17 +22,26 @@ def extract(gt, out_filename):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='''
-    Extracts pose from a csv file in ASL format to space separated format.
-    Quaternion is ordered as [x y z w]
-    ''')
-    parser.add_argument('gt', help='Ground truth csv', default='/')
-    parser.add_argument('--output', default='groundtruth.txt')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='''
+    # Extracts pose from a csv file in ASL format to space separated format.
+    # Quaternion is ordered as [x y z w]
+    # ''')
+    # parser.add_argument('gt', help='Ground truth csv', default='/')
+    # parser.add_argument('--output', default='groundtruth.txt')
+    # args = parser.parse_args()
 
-    output_fn = os.path.join(os.path.dirname(os.path.abspath(args.gt)),
-                             args.output)
+    # output_fn = os.path.join(os.path.dirname(os.path.abspath(args.gt)),
+    #                          args.output)
 
-    print('Extract ground truth pose from file '+args.gt)
-    print('Saving to file '+output_fn)
-    extract(args.gt, output_fn)
+    # print('Extract ground truth pose from file '+args.gt)
+    # print('Saving to file '+output_fn)
+    # extract(args.gt, output_fn)
+
+    gt = '/home/mongsil/workspace/datasets/NewDatasetFormat/dataset/euroc/poses/03/MH_04_difficult/groundtruth_state_groundtruth_estimate.csv'
+    output = 'groundtruth_state_groundtruth_estimate.txt'
+    output_fn = os.path.join(os.path.dirname(os.path.abspath(gt)),
+                             output)
+
+    print('Extract ground truth pose from file ' + gt)
+    print('Saving to file ' + output_fn)
+    extract(gt, output_fn)
