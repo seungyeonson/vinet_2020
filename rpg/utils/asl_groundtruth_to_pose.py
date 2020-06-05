@@ -14,7 +14,7 @@ def extract(gt, out_filename):
     with open(gt, 'rb') as fin:
         data = np.genfromtxt(fin, delimiter=",")
         for l in data:
-            fout.write('%f %f %f %f %f %f %f %f\n' %
+            fout.write('%d %f %f %f %f %f %f %f\n' %
                        (l[0], l[1], l[2], l[3], l[5], l[6], l[7], l[4]))
             # fout.write('%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f\n' %
             #            (l[0] / 1e9, l[1], l[2], l[3], l[5], l[6], l[7], l[4]))

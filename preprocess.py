@@ -144,11 +144,12 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
                 gts = list(csv.reader(f, delimiter=',', quotechar='|'))
                 header = gts[0]
                 gts = gts[1:]
-            gt_timestamps = [float(row[0]) for row in gts]
+            gt_timestamps = [row[0] for row in gts]
 
-            with open(image_path + '/trimed_left_images.csv', 'r') as f:
-                image_timestamps = list(csv.reader(f, delimiter=',', quotechar='|'))[1:]
-            image_timestamps = [float(row[1]) for row in image_timestamps]
+            with open(image_path + '/trimed_left_images.txt', 'r') as f:
+                image_timestamps = list(map(lambda x: x.strip().split(' '), f.readlines()[1:]))
+                # image_timestamps = list(csv.reader(f, delimiter=',', quotechar='|'))[1:]
+            image_timestamps = [row[1] for row in image_timestamps]
 
             # ## trim gt timestamps as image's
             # for i in range(len(gt_timestamps)):
@@ -161,16 +162,21 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
 
             sampledGT = []
             searchStartIndex = 0
+            indexs = []
             for searchTime in image_timestamps:
                 foundIdx = getClosestIndex(searchTime, searchStartIndex, gt_timestamps)
                 if foundIdx is None: continue
                 searchStartIndex = foundIdx
+                indexs.append(foundIdx)
                 sampledGT.append(gts[foundIdx])
 
             with open(pose_path + '/sampled_groundtruth.csv', 'w') as f :
                 f.write(','.join(header) + '\n')
                 for row in sampledGT:
                     f.write(','.join(row) + '\n')
+            with open(pose_path + '/sampled_groundtruth_index.txt', 'w') as f:
+                for row in indexs :
+                    f.write(str(row) + '\n')
 
             ## convert euroc gt file to uzh style
             print('Extract ground truth pose from file ' + pose_path + '/sampled_groundtruth.csv')
@@ -267,7 +273,85 @@ def r6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
 
         print('The length of traj_rel: ', len(traj_rel), "; The length of traj_rel_se3R6: ", len(traj_rel_se3R6))
 
+def sampling_Imu(data_path=arg.datadir, type_dataset=arg.dataset) :
+    POSE_PATH = os.path.join(data_path, type_dataset, 'poses')
+    IMAGE_PATH = os.path.join(data_path, type_dataset, 'images')
+    seqs = os.listdir(POSE_PATH)
+    for seq in seqs:
+        pose_path = os.path.join(POSE_PATH, seq)
+        seq_name = os.listdir(pose_path)[0]
+        pose_path = os.path.join(pose_path, seq_name)
+        image_path = os.path.join(IMAGE_PATH, seq, seq_name)
+
+        with open(pose_path + '/trimed_imu.txt', 'r') as f:
+            imus = f.readlines()
+            header = imus[0]
+            imus = list(map(lambda x: x.strip().split(' '), imus[1:]))
+            imus = imus[1:]
+        imu_timestamps = [float(row[0]) for row in imus]
+
+        with open(image_path + '/trimed_left_images.txt', 'r') as f:
+            image_timestamps = list(map(lambda x: x.strip().split(' '), f.readlines()))[1:]
+        image_timestamps = [float(row[1]) for row in image_timestamps]
+
+        sampledImu = []
+        indexs = []
+        searchStartIndex = 0
+        for searchTime in image_timestamps:
+            foundIdx = getClosestIndex(searchTime, searchStartIndex, imu_timestamps)
+            if foundIdx is None: continue
+            searchStartIndex = foundIdx
+            indexs.append(foundIdx)
+            sampledImu.append(imus[foundIdx])
+
+        with open(pose_path + '/sampled_imu.txt', 'w') as f:
+            f.write(header)
+            for row in sampledImu:
+                f.write(' '.join(row) + '\n')
+
+        with open(pose_path + '/sampled_imu_index.txt', 'w') as f:
+            for row in indexs:
+                f.write(str(row) + '\n')
+
+def prepare_learn_data(data_path=arg.datadir, type_dataset=arg.dataset) :
+    POSE_PATH = os.path.join(data_path, type_dataset, 'poses')
+    IMAGE_PATH = os.path.join(data_path, type_dataset, 'images')
+    seqs = os.listdir(POSE_PATH)
+    for seq in seqs:
+        pose_path = os.path.join(POSE_PATH, seq)
+        seq_name = os.listdir(pose_path)[0]
+        pose_path = os.path.join(pose_path, seq_name)
+        image_path = os.path.join(IMAGE_PATH, seq, seq_name)
+
+        with open(image_path + '/trimed_left_images.txt', 'r') as f:
+            image_data = f.readlines()
+            image_data = [row.strip() for row in image_data]
+        with open(pose_path + '/sampled_imu.txt', 'r') as f :
+            imu_data = f.readlines()
+            imu_data = [row.strip().split(' ') for row in imu_data]
+        with open(pose_path + '/sampled_imu_index.txt', 'r') as f :
+            imu_index = f.readlines()
+            imu_index = [row.strip() for row in imu_index]
+        with open(pose_path + '/sampled_groundtruth.txt', 'r') as f:
+            gt_data = f.readlines()
+            gt_data= [row.strip().split(' ') for row in gt_data]
+        with open(pose_path + '/sampled_groundtruth_index.txt', 'r') as f :
+            gt_index = f.readlines()
+            gt_index = [row.strip() for row in gt_index]
+        assert len(image_data) == len(imu_data) == len(gt_data)
+
+
+        all_data = []
+        all_data.append('image_index ' + image_data[0] + ' ' + 'imu_index imu_timestamps gt_index gt_timestamps\n')
+        for i in range(1,len(image_data)) :
+            all_data.append(image_data[i] + ' ' + imu_index[i-1] + ' ' + imu_data[i][0] + ' ' + gt_index[i-1] + ' ' + gt_data[i][0] + '\n')
+
+        with open(image_path + '/learning_data.txt', 'w') as f :
+            f.writelines(all_data)
+
 if __name__ == "__main__" :
-    sampling_GT(type_dataset='euroc')
-    relative_GT(type_dataset='euroc')
-    r6_GT(type_dataset='euroc')
+    # sampling_GT(type_dataset='euroc')
+    # relative_GT(type_dataset='euroc')
+    # r6_GT(type_dataset='euroc')
+    sampling_Imu(type_dataset='euroc')
+    prepare_learn_data(type_dataset='euroc')

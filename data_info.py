@@ -58,7 +58,6 @@ def make_datainfo(data_path=arg.datadir, type_dataset=arg.dataset) :
         with open(pose_path + '/use_data_info.txt', 'w') as f :
             f.writelines([row+'\n' for row in output_lines])
 
-
 class DataInfo :
     def __init__(self):
         self.arg = args.arguments
