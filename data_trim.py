@@ -1,4 +1,5 @@
 # pick the times which every data(image, imu, gt) has.
+# -*- coding: utf-8 -*-
 import os
 import args
 import csv
