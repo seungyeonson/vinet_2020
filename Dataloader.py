@@ -4,7 +4,7 @@ import numpy as np
 import os
 import scipy.misc as smc
 from skimage import io
-
+import csv
 import torch
 from torch.utils.data import Dataset
 
@@ -107,6 +107,14 @@ class Dataloader(Dataset):
 		# print(os.path.join(curImgDir, str(frame2).zfill(6) + '.png'))
 		# print(curImgDir, str(frame1).zfill(6) + '.png')
 
+		with open(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'trimed_left_images.csv'), 'r') as f:
+			trim_img = list(csv.reader(f, delimiter=',', quotechar='|'))
+			trim_img = trim_img[1:]
+
+		print(trim_img[0][-1])
+		print(trim_img)
+
+
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', str(frame1).zfill(6) + '.png'), mode = 'L')
 		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', str(frame2).zfill(6) + '.png'), mode = 'L')
 
@@ -156,3 +164,7 @@ class Dataloader(Dataset):
 		img = img.permute(2,0,1)
 
 		return img
+
+
+train_data = Dataloader(arg.datadir, [1], [0], [1100], width = arg.imageWidth, height = arg.imageHeight)
+train_data[0]
