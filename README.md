@@ -1,4 +1,4 @@
-##requirements
+## requirements
 - sophuspy (https://github.com/craigstar/SophusPy)
 - pytorch
 - 
@@ -6,3 +6,5 @@
 <ol>
     <li>prepare data</li>
 </ol>
+
+<strong>NOT COMPLETED. STEEL CODING.</strong>
