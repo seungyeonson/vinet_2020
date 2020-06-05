@@ -186,22 +186,22 @@ def trim_image_imu_gt(data_path=arg.datadir, type_dataset=arg.dataset) :
                     gts = gts[:i]
                     break
 
-        with open(pose_path + '/trimed_imu.csv', 'w') as f:
-            f.write(','.join(header_imu) + '\n')
+        with open(pose_path + '/trimed_imu.txt', 'w') as f:
+            f.write(' '.join(header_imu) + '\n')
             for row in imus:
-                f.write(','.join(row) + '\n')
+                f.write(' '.join(row) + '\n')
             print('IMU length : ({})  saved'.format(len(imus)))
 
-        with open(pose_path + '/trimed_groundtruth.csv', 'w') as f:
-            f.write(','.join(header_gt) + '\n')
+        with open(pose_path + '/trimed_groundtruth.txt', 'w') as f:
+            f.write(' '.join(header_gt) + '\n')
             for row in gts:
-                f.write(','.join(row) + '\n')
+                f.write(' '.join(row) + '\n')
             print('GT length : ({})  saved'.format(len(gts)))
 
-        with open(image_path + '/trimed_left_images.csv', 'w') as f:
-            f.write(','.join(header_image) + '\n')
+        with open(image_path + '/trimed_left_images.txt', 'w') as f:
+            f.write(' '.join(header_image) + '\n')
             for row in images:
-                f.write(','.join(row) + '\n')
+                f.write(' '.join(row) + '\n')
             print('Images length : ({})  saved'.format(len(images)))
 
 if __name__ == "__main__" :

@@ -227,7 +227,7 @@ def relative_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
                          float_to_str(trajectory_relative[i][7])
                 f.write(tmpStr + '\n')
 
-def R6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
+def r6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
     POSE_PATH = os.path.join(data_path, type_dataset, 'poses')
     seqs = os.listdir(POSE_PATH)
     for seq in seqs:
@@ -270,4 +270,4 @@ def R6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
 if __name__ == "__main__" :
     sampling_GT(type_dataset='euroc')
     relative_GT(type_dataset='euroc')
-    R6_GT(type_dataset='euroc')
+    r6_GT(type_dataset='euroc')
