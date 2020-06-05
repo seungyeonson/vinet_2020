@@ -30,7 +30,7 @@ class Dataloader(Dataset):
 		self.poseDir = os.path.join(self.baseDir, arg.dataset, 'poses')
 
 		# Max frames in each dataset sequence
-		self.MaxFrames = endFrames
+		self.MaxFrames = [4540, 1100, 4660, 800, 270, 2760, 1100, 1100, 4070, 1590, 1200]
 
 		# Dimensions to be fed in the input
 		self.width = width
@@ -107,16 +107,12 @@ class Dataloader(Dataset):
 		# print(os.path.join(curImgDir, str(frame2).zfill(6) + '.png'))
 		# print(curImgDir, str(frame1).zfill(6) + '.png')
 
-		with open(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'trimed_left_images.csv'), 'r') as f:
-			trim_img = list(csv.reader(f, delimiter=',', quotechar='|'))
-			trim_img = trim_img[1:]
-
-		print(trim_img[0][-1])
-		print(trim_img)
 
 
-		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', str(frame1).zfill(6) + '.png'), mode = 'L')
-		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', str(frame2).zfill(6) + '.png'), mode = 'L')
+		trim_img =np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'trimed_left_images.txt'),dtype=str)
+		print(frame1,frame2,trim_img[frame1][3] )
+		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame1][3]), mode = 'L')
+		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame2][3]), mode = 'L')
 
 		img1 = self.preprocessImg(img1)
 		img2 = self.preprocessImg(img2)
@@ -131,9 +127,9 @@ class Dataloader(Dataset):
 		# Load pose ground-truth
 		curposeDir = os.path.join(self.poseDir, str(seqIdx).zfill(2))
 
-		poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], 'sampled_groundtruth.txt'), \
+		poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'sampled_groundtruth.txt'), \
 							   dtype=np.float32)
-		relative_R6 = np.loadtxt(os.path.join(curposeDir, os.listdir(curImgDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
+		relative_R6 = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
 							   dtype=np.float32)
 
 		pose1 = np.vstack([poses[frame1].astype(np.float32)])
@@ -141,12 +137,23 @@ class Dataloader(Dataset):
 
 
 		#relative R6 gt
-
 		pose2 =np.vstack([relative_R6[frame1].astype(np.float32)])
 		pose2 = pose2[:,1:]
 		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
 
-		imu=0 #아직처리안함
+		imu_index_1 = trim_img[frame1][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+		imu_index_2 = trim_img[frame2][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+		imu_data = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'trimed_imu.txt'), \
+							   dtype=np.float32, comments='#')
+		imu_data = imu_data[:,1:]
+		frame1_imu =imu_data[int(imu_index_1):int(imu_index_2)+1]
+		frame2_imu =imu_data[int(imu_index_2)]
+
+		imu = np.resize(frame1_imu, (1,len(frame1_imu),6))
+
+
+		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
+
 		return inputTensor, pose2, imu, seqIdx, frame1, frame2, endOfSequence
 
 	def preprocessImg(self, img):
@@ -166,5 +173,14 @@ class Dataloader(Dataset):
 		return img
 
 
-train_data = Dataloader(arg.datadir, [1], [0], [1100], width = arg.imageWidth, height = arg.imageHeight)
-train_data[0]
+
+# train_data = Dataloader(arg.datadir, [0,1], [0,0], [4540,1100], width = arg.imageWidth, height = arg.imageHeight)
+# ##error
+# train_data = Dataloader(arg.datadir, [1,0], [0,0], [1100,4540], width = arg.imageWidth, height = arg.imageHeight)
+#
+# print(train_data.len)
+# for i in range(len(train_data):
+# 	train_data[i]
+
+#if fast test
+# train_data[1]
