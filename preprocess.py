@@ -146,8 +146,9 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
                 gts = gts[1:]
             gt_timestamps = [float(row[0]) for row in gts]
 
-            with open(image_path + '/trimed_left_images.csv', 'r') as f:
-                image_timestamps = list(csv.reader(f, delimiter=',', quotechar='|'))[1:]
+            with open(image_path + '/trimed_left_images.txt', 'r') as f:
+                image_timestamps = list(map(lambda x: x.strip().split(' '), f.readlines()))[1:]
+                # image_timestamps = list(csv.reader(f, delimiter=',', quotechar='|'))[1:]
             image_timestamps = [float(row[1]) for row in image_timestamps]
 
             # ## trim gt timestamps as image's

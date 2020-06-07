@@ -49,8 +49,8 @@ def make_datainfo(data_path=arg.datadir, type_dataset=arg.dataset) :
         image_path = os.path.join(IMAGE_PATH, seq, seq_name)
 
         output_lines = []
-        output_lines = write_from_csv_file(path=image_path, file_name='trimed_left_images.csv', output_lines=output_lines)
-        output_lines = write_from_csv_file(path=pose_path, file_name='imu.csv', output_lines=output_lines)
+        output_lines = write_from_txt_file(path=image_path, file_name='trimed_left_images.txt', output_lines=output_lines)
+        output_lines = write_from_csv_file(path=pose_path, file_name='trimed_imu.csv', output_lines=output_lines)
         output_lines = write_from_txt_file(path=pose_path, file_name='sampled_groundtruth.txt', output_lines=output_lines)
         output_lines = write_from_txt_file(path=pose_path, file_name='sampled_relative_groundtruth.txt', output_lines=output_lines)
         output_lines = write_from_txt_file(path=pose_path, file_name='sampled_relative_R6_groundtruth.txt', output_lines=output_lines)
