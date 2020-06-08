@@ -56,6 +56,7 @@ class Trainer():
 
         # Keep track of number of iters (useful for tensorboardX visualization)
         self.iters = 0
+        self.abs_traj = None
 
     # Train for one epoch
     def train(self):
@@ -96,20 +97,25 @@ class Trainer():
             inp, imu, r6, xyzq, _, _, _, endOfSeq = self.train_set[i]
 
             # Feed it through the model
-            pred_r6, pred_xyzq = self.model.forward(inp, imu, xyzq)
+            pred_r6= self.model.forward(inp, imu, xyzq)
+            numarr = pred_r6.cpu().numpy()
+            if self.abs_traj==None:
+                self.abs_traj = xyzq
+                self.abs_traj = np.resize(self.abs_traj,(1,1,6))
+            else:
+                self.abs_traj = se3qua.accu(self.abs_traj,numarr)
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
-            curloss_xyzq = Variable(self.args.scf * (torch.dist(pred_xyzq, xyzq) ** 2), requires_grad=False)
+            curloss_xyzq = Variable(self.args.scf * (torch.dist(self.abs_traj, xyzq) ** 2), requires_grad=False)
             self.loss_r6 += curloss_r6
             self.loss_xyzq +=curloss_xyzq
 
 
             if np.random.normal() < -0.9:
                 tqdm.write('r6_loss: ' + str(pred_r6.data) , file=sys.stdout)
-                tqdm.write('xyzq_loss: ' + str(pred_xyzq.data), file=sys.stdout)
-
+                tqdm.write('xyzq_loss: ' + str(abs_traj.data), file=sys.stdout)
             self.loss += sum([self.args.scf * self.loss_fn(pred_r6, r6), \
-					self.loss_fn(pred_xyzq, xyzq)])
+					self.loss_fn(abs_traj, xyzq)])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
@@ -194,24 +200,31 @@ class Trainer():
 
             # Get the next frame
             inp, imu, r6, xyzq, seq, frame1, frame2, endOfSeq = self.val_set[i]
+
             metadata = np.concatenate((np.asarray([seq]), np.asarray([frame1]), np.asarray([frame2])))
             metadata = np.reshape(metadata, (1, 3))
 
             # Feed it through the model
-            pred_r6, pred_xyzq = self.model.forward(inp, imu, xyzq)
+            pred_r6 = self.model.forward(inp, imu, xyzq)
+            numarr = pred_r6.cpu().numpy()
+            if self.abs_traj == None:
+                self.abs_traj = xyzq
+                self.abs_traj = np.resize(self.abs_traj, (1, 1, 6))
+            else:
+                self.abs_traj = se3qua.accu(self.abs_traj, numarr)
 
             if traj_pred is None:
                 traj_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
-                                                pred_xyzq.data.cpu().numpy()), axis=1)
+                                                self.abs_traj.data.cpu().numpy()), axis=1)
             else:
                 cur_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
-                                               pred_xyzq.data.cpu().numpy()), axis=1)
+                                               self.abs_traj.data.cpu().numpy()), axis=1)
                 traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
 
             # Store losses (for further analysis)
 
             curloss_r6 = (self.args.scf * self.loss_fn(pred_r6, r6)).detach().cpu().numpy()
-            curloss_xyzq = (self.loss_fn(pred_xyzq, xyzq)).detach().cpu().numpy()
+            curloss_xyzq = (self.loss_fn(self.abs_traj, xyzq)).detach().cpu().numpy()
             Losses_seq.append(curloss_r6 + curloss_xyzq)
             TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
 
@@ -237,6 +250,6 @@ class Trainer():
 
                 # Reset LSTM hidden states
                 self.model.reset_LSTM_hidden()
-
+                self.abs_traj = None
 
         return curloss_r6, curloss_xyzq, Losses_seq

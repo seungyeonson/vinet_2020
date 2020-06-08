@@ -83,17 +83,17 @@ class VINet(nn.Module):
         self.rnnIMU.cuda()
 
         self.rnn = nn.LSTM(
-                input_size=self.numConcatFeatures,
+                input_size=98317,
                 hidden_size=hidden_units_LSTM[0],
                 num_layers=numLSTMCells,
                 batch_first=True
         )
         self.rnn.cuda()
 
-        self.h1 = torch.zeros(1, self.hidden_units_imu[0])
-        self.c1 = torch.zeros(1, self.hidden_units_imu[0])
-        self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
-        self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
+        self.h1 = torch.zeros(2,1, self.hidden_units_imu[0])
+        self.c1 = torch.zeros(2,1, self.hidden_units_imu[0])
+        self.h2 = torch.zeros(2,1, self.hidden_units_LSTM[1])
+        self.c2 = torch.zeros(2,1, self.hidden_units_LSTM[1])
 
         self.fc1 = nn.Linear(self.hidden_units_LSTM[self.numLSTMCells - 1], 128)
         self.fc1.cuda()
@@ -101,7 +101,7 @@ class VINet(nn.Module):
         self.fc2 = nn.Linear(128, 32)
         self.fc2.cuda()
 
-        self.fc_out = nn.Linear(32, 7)
+        self.fc_out = nn.Linear(32, 6)
         self.fc_out.cuda()
 
     def forward(self, x, imu, xyzq, reset_hidden=False):
@@ -130,23 +130,27 @@ class VINet(nn.Module):
             # x = (F.leaky_relu(self.conv(x)))
             x = (F.leaky_relu(self.conv6(x)))
             x = (self.conv6_1(x))
-            output1 = x
+
 
             if reset_hidden is True:
 
-                self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-                self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
+                self.h1 = torch.zeros(2, 1, self.hidden_units_LSTM[0])
+                self.c1 = torch.zeros(2, 1, self.hidden_units_LSTM[0])
 
             self.h1, self.c1 = self.rnnIMU(imu, (self.h1, self.c1))
-            print(self.h1.shape)
+
             imu_out = self.h1[:,-1,:]
-            print(imu_out.shape)
+
 
             imu_out = imu_out.unsqueeze(1)
-            print(imu_out.shape)
 
-            x = torch.cat((x,imu_out),2)
+            # print(x.view(1,1,-1).shape)
+            # print(imu_out.shape)
+            x = torch.cat((x.view(1,1,-1),imu_out),2)
+            # print(x.shape)
             x = torch.cat((x,xyzq),2)
+            # print(x.shape)
+            # print(xyzq.shape)
             self.h2, self.c2 = self.rnn(x)
 
 
@@ -177,10 +181,11 @@ class VINet(nn.Module):
                     output_fc2 = F.selu(self.fc2(output_fc1))
 
 
-            output2 = self.fc_out(output_fc2)
+            output = self.fc_out(output_fc2)
 
 
-            return output1, output2
+
+            return output
 
     # Initialize the weights of the network
     def init_weights(self):
