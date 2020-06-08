@@ -22,6 +22,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
 from Trainer import Trainer
+from data_info import DataInfo
 
 # Other project files with definitions
 import args
@@ -142,12 +143,13 @@ bestValLoss = np.inf
 
 
 # Create datasets for the current epoch
-# train_seq = [0, 1, 2, 8, 9]
-# train_startFrames = [0, 0, 0, 0, 0,0000000]
-# train_endFrames = [4540, 1100, 4660, 4070, 1590]
-# val_seq = [3, 4, 5, 6, 7, 10]
-# val_startFrames = [0, 0, 0, 0, 0, 0]
-# val_endFrames = [800, 270, 2760, 1100, 1100, 1200]
+info_dict = DataInfo()
+train_seq = [0, 1, 2, 8, 9]
+train_startFrames = info_dict.get_startFrames(train_seq)
+train_endFrames = info_dict.get_endFrames(train_seq)
+val_seq = [3, 4, 5, 6, 7, 10]
+val_startFrames = info_dict.get_startFrames(val_seq)
+val_endFrames = info_dict.get_endFrames(val_seq)
 
 #for test
 train_seq = [1]
