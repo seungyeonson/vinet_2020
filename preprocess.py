@@ -342,7 +342,7 @@ def prepare_learn_data(data_path=arg.datadir, type_dataset=arg.dataset) :
 
 
         all_data = []
-        all_data.append('image_index ' + image_data[0] + ' ' + 'imu_index imu_timestamps gt_index gt_timestamps\n')
+        all_data.append('#image_index ' + image_data[0] + ' ' + 'imu_index imu_timestamps gt_index gt_timestamps\n')
         for i in range(1,len(image_data)) :
             all_data.append(image_data[i] + ' ' + imu_index[i-1] + ' ' + imu_data[i][0] + ' ' + gt_index[i-1] + ' ' + gt_data[i][0] + '\n')
 
