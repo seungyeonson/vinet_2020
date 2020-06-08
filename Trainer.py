@@ -40,8 +40,7 @@ class Trainer():
 
         # Variables to hold loss
 
-        self.loss_rot = Variable(torch.zeros(1, dtype=torch.float32).cuda(), requires_grad=False)
-        self.loss_trans = Variable(torch.zeros(1, dtype=torch.float32).cuda(), requires_grad=False)
+        self.loss_r6 = Variable(torch.zeros(1, dtype=torch.float32).cuda(), requires_grad=False)
         self.loss = torch.zeros(1, dtype=torch.float32).cuda()
 
         # Optimizer
@@ -81,14 +80,7 @@ class Trainer():
         else:
             numTrainIters = len(self.train_set)
 
-        # Initialize a variable to hold the number of sampes in the current batch
-        # Here, 'batch' refers to the length of a subsequence that can be processed
-        # before performing a 'detach' operation
         elapsedBatches = 0
-
-        # Choose a generator (for iterating over the dataset, based on whether or not the
-        # sbatch flag is set to True). If sbatch is True, we're probably running on a cluster
-        # and do not want an interactive output. So, could suppress tqdm and print statements
 
         gen = trange(numTrainIters)
 
@@ -105,39 +97,15 @@ class Trainer():
             # Feed it through the model
             pred = self.model.forward(inp, imu)
 
-            # Compute loss
-            # self.loss_rot += self.args.scf * self.loss_fn(rot_pred, rot_gt)
-            # if self.args.outputParameterization == 'mahalanobis':
-            #     # Compute a mahalanobis norm on the output 6-vector
-            #     # Note that, although we seem to be computing loss only over rotation variables
-            #     # rot_pred and rot_gt are now 6-vectors that also include translation variables.
-            #     self.loss += self.loss_fn(rot_pred, rot_gt, self.train_set.infoMat)
-            #     tmpLossVar = Variable(
-            #         torch.mm(rot_pred - rot_gt, torch.mm(self.train_set.infoMat, (rot_pred - rot_gt).t())),
-            #         requires_grad=False).detach().cpu().numpy()
-            #     # tmpLossVar = Variable(torch.dist(rot_pred, rot_gt) ** 2, requires_grad = False).detach().cpu().numpy()
-            #     totalLosses.append(tmpLossVar[0])
-            #     totalLoss_seq.append(tmpLossVar[0])
-
             curloss= Variable(self.args.scf * (torch.dist(pred, r6) ** 2), requires_grad=False)
-            self.loss += curloss
+            self.loss_r6 += curloss
 
 
             if np.random.normal() < -0.9:
                 tqdm.write('r6_loss: ' + str(pred.data) , file=sys.stdout)
 
-            self.loss = self.loss_fn(pred, r6)
+            self.loss += self.loss_fn(pred, r6)
 
-            # # Compute gradients	# ???
-            # self.loss = sum([self.args.scf * self.loss_fn(rot_pred, rot_gt), \
-            # 	self.loss_fn(trans_pred, trans_gt)])
-            # self.loss.backward()
-            # # self.model.zero_grad()
-            # self.model.detach_LSTM_hidden()
-
-            # Store losses (for further analysis)
-            # curloss_rot = (self.args.scf * self.loss_fn(rot_pred, rot_gt)).detach().cpu().numpy()
-            # curloss_trans = (self.loss_fn(trans_pred, trans_gt)).detach().cpu().numpy()
             curloss= curloss.detach().cpu().numpy()
             Losses.append(curloss)
             # totalLosses.append(curloss_rot + curloss_trans)
@@ -156,26 +124,6 @@ class Trainer():
             if elapsedBatches >= self.args.trainBatch or endOfSeq is True:
 
                 elapsedBatches = 0
-
-                # # L2-Regularization
-                # if self.args.gamma > 0.0:
-                # 	# Regularization for network weights
-                # 	l2_reg = None
-                # 	for W in self.model.parameters():
-                # 		if l2_reg is None:
-                # 			l2_reg = W.norm(2)
-                # 		else:
-                # 			l2_reg = l2_reg + W.norm(2)
-                # 	self.loss = sum([self.weightRegularizer * l2_reg, self.loss])
-
-                # # L1-Regularization
-                # if self.args.gamma > 0.0:
-                # 	l1_crit = nn.L1Loss(size_average = False)
-                # 	reg_loss = None
-                # 	for param in self.model.parameters():
-                # 		reg_loss += l1_crit(param)
-                # 	self.loss = sum([self.gamma * reg_loss, self.loss])
-
                 # Regularize only LSTM(s)
                 if self.args.gamma > 0.0:
                     paramsDict = self.model.state_dict()
@@ -198,12 +146,9 @@ class Trainer():
                         reg_loss += paramsDict['lstm2.bias_hh'].norm(2)
                     self.loss = sum([self.args.gamma * reg_loss, self.loss])
 
-                # Print stats
-                if self.args.outputParameterization != 'mahalanobis':
-                    tqdm.write('Rot Loss: ' + str(np.mean(rotLoss_seq)) + ' Trans Loss: ' + \
-                               str(np.mean(transLoss_seq)), file=sys.stdout)
-                else:
-                    tqdm.write('Total Loss: ' + str(np.mean(totalLoss_seq)), file=sys.stdout)
+
+
+                tqdm.write('Total Loss: ' + str(np.mean(totalLoss_seq)), file=sys.stdout)
                 rotLoss_seq = []
                 transLoss_seq = []
                 totalLoss_seq = []

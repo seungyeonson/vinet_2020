@@ -133,6 +133,7 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
         IMAGE_PATH = os.path.join(data_path, type_dataset, 'images')
         seqs = os.listdir(POSE_PATH)
         for seq in seqs:
+            print(seq)
             pose_path = os.path.join(POSE_PATH, seq)
             seq_name = os.listdir(pose_path)[0]
             pose_path = os.path.join(pose_path, seq_name)

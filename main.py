@@ -21,6 +21,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
+from Trainer import Trainer
 
 # Other project files with definitions
 import args
@@ -115,7 +116,14 @@ print('Loaded! Good to launch!')
 ########################################################################
 ### Criterion, optimizer, and scheduler ###
 ########################################################################
+criterion = nn.MSELoss(reduction = 'sum')
 
+if arg.optMethod == 'adam':
+	optimizer = optim.Adam(VINet.parameters(), lr = arg.lr, betas = (arg.beta1, arg.beta2), weight_decay = arg.weightDecay, amsgrad = False)
+elif arg.optMethod == 'sgd':
+	optimizer = optim.SGD(VINet.parameters(), lr = arg.lr, momentum = arg.momentum, weight_decay = arg.weightDecay, nesterov = False)
+else:
+	optimizer = optim.Adagrad(VINet.parameters(), lr = arg.lr, lr_decay = arg.lrDecay , weight_decay = arg.weightDecay)
 
 
 ########################################################################
@@ -176,7 +184,7 @@ for epoch in range(arg.nepochs):
 
 	# Initialize a trainer (Note that any accumulated gradients on the model are flushed
 	# upon creation of this Trainer object)
-	trainer = Trainer(arg, epoch, deepVO, train_data, val_data, criterion, optimizer, \
+	trainer = Trainer(arg, epoch, VINet, train_data, val_data, criterion, optimizer, \
 					  scheduler=None)
 
 	# Training loop

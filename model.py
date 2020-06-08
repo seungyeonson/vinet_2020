@@ -45,23 +45,6 @@ class VINet(nn.Module):
         self.numLSTMCells = numLSTMCells
         self.hidden_units_LSTM = hidden_units_LSTM
 
-        """
-        # Number of LSTM Cells to be stacked
-        self.numLSTMCells = numLSTMCells
-        if self.numLSTMCells < 1:
-            raise ValueError('Need to have at least 1 LSTMCell unit.')
-
-        # Initialize number of hidden units required for LSTM
-        self.hidden_units_LSTM = []
-        if hidden_units_LSTM is not None:
-            if len(hidden_units_LSTM) != self.numLSTMCells:
-                raise ValueError('List specifying hidden unit sizes must contain the same \
-                    number of entries as there are LSTMCells.')
-            self.hidden_units_LSTM = hidden_units_LSTM
-        else:
-            self.hidden_units_LSTM = [1024 for i in range(self.numLSTMCells)]
-        """
-
         # Path to FlowNet weights
         if flownet_weights_path is not None:
             self.use_flownet = True
@@ -89,25 +72,6 @@ class VINet(nn.Module):
         self.conv6 = nn.Conv2d(512, 1024, stride=2, bias=self.bias)
         self.conv6_1 = nn.conv2d(1024, 1024)
 
-        """
-        # Create LSTMCell, output, and cellstate variables
-        self.lstm_var_name = 'lstm{}'
-        self.lstm_output_var_name = 'lstm_h{}'
-        self.lstm_cellstate_var_name = 'lstm_c{}'
-        setattr(self, self.lstm_var_name.format(0), nn.LSTMCell(122880, self.hidden_units_LSTM[0]))
-        setattr(self, self.lstm_output_var_name.format(0), \
-            torch.zeros(1, self.hidden_units_LSTM[0]))
-        setattr(self, self.lstm_cellstate_var_name.format(0), \
-            torch.zeros(1, self.hidden_units_LSTM[0]))
-        for i in range(1, self.numLSTMCells):
-            setattr(self, self.lstm_var_name.format(i), nn.LSTMCell(self.hidden_units_LSTM[i-1], \
-                self.hidden_units_LSTM[i]))
-            setattr(self, self.lstm_output_var_name.format(i), \
-                torch.zeros(1, self.hidden_units_LSTM[i]))
-            setattr(self, self.lstm_cellstate_var_name.format(i), \
-                torch.zeros(1, self.hidden_units_LSTM[i]))
-        """
-
         if self.numLSTMCells == 1:
             self.lstm1 = nn.LSTMCell(self.numConcatFeatures, self.hidden_units_LSTM[0])
             self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
@@ -119,29 +83,6 @@ class VINet(nn.Module):
             self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
             self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
             self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
-
-        # # Create variables for LSTM outputs and cellstates
-
-        # # self.LSTMOutputs = []		# ???
-        # # self.LSTMCellstates = []	# ???
-        # for i in range(self.numLSTMCells):
-        # 	if i == 0:
-        # 		self.LSTMCells.append(nn.LSTMCell(122880, self.hidden_units_LSTM[i]))
-        # 	else:
-        # 		self.LSTMCells.append(nn.LSTMCell(self.hidden_units_LSTM[i-1], \
-        # 			self.hidden_units_LSTM[i]))
-        # 	# self.LSTMOutputs.append(torch.zeros(1, self.hidden_units_LSTM[i]))		# ???
-        # 	# self.LSTMCellstates.append(torch.zeros(1, self.hidden_units_LSTM[i]))		# ???
-        # 	self.LSTMOutputs.append(nn.Parameter())
-
-        # self.lstm1 = nn.LSTMCell(122880, 1024)
-        # self.h1 = torch.zeros(1, 1024)
-        # self.c1 = torch.zeros(1, 1024)
-        # self.lstm2 = nn.LSTMCell(1024, 1024)
-        # self.h2 = torch.zeros(1, 1024)
-        # self.c2 = torch.zeros(1, 1024)
-
-        # FC layers
 
         self.fc1 = nn.Linear(self.hidden_units_LSTM[self.numLSTMCells - 1], 128)
 
@@ -225,14 +166,11 @@ class VINet(nn.Module):
                 else:
                     output_fc2 = F.selu(self.fc2(output_fc1))
 
-            if self.parameterization == 'mahalanobis':
-                output_ = self.fc_out(output_fc2)
-                return output_, None
 
-            output_rot = self.fc_rot(output_fc2)
-            output_trans = self.fc_trans(output_fc2)
+            output = self.fc_out(output_fc2)
 
-            return output_rot, output_trans
+
+            return output
 
     # Initialize the weights of the network
     def init_weights(self):
@@ -253,50 +191,17 @@ class VINet(nn.Module):
                 for name, param in m.named_parameters():
                     if 'weight' in name:
                         nn.init.orthogonal(param)
-                    # nn.init.xavier_normal_(param)
                     elif 'bias' in name:
-                        # Forget gate bias trick: Initially during training, it is often helpful
-                        # to initialize the forget gate bias to a large value, to help information
-                        # flow over longer time steps.
-                        # In a PyTorch LSTM, the biases are stored in the following order:
-                        # [ b_ig | b_fg | b_gg | b_og ]
-                        # where, b_ig is the bias for the input gate,
-                        # b_fg is the bias for the forget gate,
-                        # b_gg (see LSTM docs, Variables section),
-                        # b_og is the bias for the output gate.
-                        # So, we compute the location of the forget gate bias terms as the
-                        # middle one-fourth of the bias vector, and initialize them.
-
-                        # First initialize all biases to zero
-                        # nn.init.uniform_(param)
                         nn.init.constant_(param, 0.)
                         bias = getattr(m, name)
                         n = bias.size(0)
                         start, end = n // 4, n // 2
                         bias.data[start:end].fill_(10.)
 
-        # Special weight_init for rotation FCs
-        if self.parameterization == 'mahalanobis':
-            pass
-        else:
-            self.fc_rot.weight.data = self.fc_rot.weight.data / 1000.
-        # self.fc_trans.weight.data = self.fc_trans.weight.data * 100.
-
     # Detach LSTM hidden state (i.e., output) and cellstate variables to free up the
     # computation graph. Gradients will NOT flow backward through the timestep where a
     # detach is performed.
     def detach_LSTM_hidden(self):
-
-        # for i in range(self.numLSTMCells):
-        # 	# cur_output = getattr(self, self.lstm_output_var_name.format(i))
-        # 	# cur_cellstate = getattr(self, self.lstm_cellstate_var_name.format(i))
-        # 	# cur_output = cur_output.detach()
-        # 	# cur_cellstate = cur_cellstate.detach()
-        # 	setattr(self, self.lstm_output_var_name.format(i), getattr(self, \
-        # 		self.lstm_output_var_name.format(i)).detach())
-        # 	setattr(self, self.lstm_cellstate_var_name.format(i), getattr(self, \
-        # 		self.lstm_cellstate_var_name.format(i)).detach())
-
         if self.numLSTMCells == 1:
             self.h1 = self.h1.detach()
             self.c1 = self.c1.detach()
@@ -307,13 +212,6 @@ class VINet(nn.Module):
             self.c2 = self.c2.detach()
 
     def reset_LSTM_hidden(self):
-
-        # for i in range(self.numLSTMCells):
-        # 	setattr(self, self.lstm_output_var_name.format(i), \
-        # 		torch.zeros(1, self.hidden_units_LSTM[i]))
-        # 	setattr(self, self.lstm_cellstate_var_name.format(i), \
-        # 		torch.zeros(1, self.hidden_units_LSTM[i]))
-
         if self.numLSTMCells == 1:
             self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
             self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
@@ -323,95 +221,95 @@ class VINet(nn.Module):
             self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
             self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
 
-    def load_flownet_weights(self):
-
-        if self.use_flownet is True:
-
-            flownet = torch.load(self.flownet_weights_path)
-            cnn = flownet['state_dict']
-
-            if self.batchnorm is False:
-
-                cnn.conv1.weight.data = weights["conv1.0.weight"]
-                cnn.conv1.bias.data = weights["conv1.0.bias"]
-
-                cnn.conv2.weight.data = weights["conv2.0.weight"]
-                cnn.conv2.bias.data = weights["conv2.0.bias"]
-
-                cnn.conv3.weight.data = weights["conv3.0.weight"]
-                cnn.conv3.bias.data = weights["conv3.0.bias"]
-
-                cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
-                cnn.conv3_1.bias.data = weights["conv3_1.0.bias"]
-
-                cnn.conv4.weight.data = weights["conv4.0.weight"]
-                cnn.conv4.bias.data = weights["conv4.0.bias"]
-
-                cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
-                cnn.conv4_1.bias.data = weights["conv4_1.0.bias"]
-
-                cnn.conv5.weight.data = weights["conv5.0.weight"]
-                cnn.conv5.bias.data = weights["conv5.0.bias"]
-
-                cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
-                cnn.conv5_1.bias.data = weights["conv5_1.0.bias"]
-
-                cnn.conv6.weight.data = weights["conv6.0.weight"]
-                cnn.conv6.bias.data = weights["conv6.0.bias"]
-
-            else:
-                cnn.conv1.weight.data = weights["conv1.0.weight"]
-                cnn.conv1_bn.weight.data = weights["conv1.1.weight"]
-                cnn.conv1_bn.bias.data = weights["conv1.1.bias"]
-                cnn.conv1_bn.running_mean.data = weights["conv1.1.running_mean"]
-                cnn.conv1_bn.running_var.data = weights["conv1.1.running_var"]
-
-                cnn.conv2.weight.data = weights["conv2.0.weight"]
-                cnn.conv2_bn.weight.data = weights["conv2.1.weight"]
-                cnn.conv2_bn.bias.data = weights["conv2.1.bias"]
-                cnn.conv2_bn.running_mean.data = weights["conv2.1.running_mean"]
-                cnn.conv2_bn.running_var.data = weights["conv2.1.running_var"]
-
-                cnn.conv3.weight.data = weights["conv3.0.weight"]
-                cnn.conv3_bn.weight.data = weights["conv3.1.weight"]
-                cnn.conv3_bn.bias.data = weights["conv3.1.bias"]
-                cnn.conv3_bn.running_mean.data = weights["conv3.1.running_mean"]
-                cnn.conv3_bn.running_var.data = weights["conv3.1.running_var"]
-
-                cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
-                cnn.conv3_1_bn.weight.data = weights["conv3_1.1.weight"]
-                cnn.conv3_1_bn.bias.data = weights["conv3_1.1.bias"]
-                cnn.conv3_1_bn.running_mean.data = weights["conv3_1.1.running_mean"]
-                cnn.conv3_1_bn.running_var.data = weights["conv3_1.1.running_var"]
-
-                cnn.conv4.weight.data = weights["conv4.0.weight"]
-                cnn.conv4_bn.weight.data = weights["conv4.1.weight"]
-                cnn.conv4_bn.bias.data = weights["conv4.1.bias"]
-                cnn.conv4_bn.running_mean.data = weights["conv4.1.running_mean"]
-                cnn.conv4_bn.running_var.data = weights["conv4.1.running_var"]
-
-                cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
-                cnn.conv4_1_bn.weight.data = weights["conv4_1.1.weight"]
-                cnn.conv4_1_bn.bias.data = weights["conv4_1.1.bias"]
-                cnn.conv4_1_bn.running_mean.data = weights["conv4_1.1.running_mean"]
-                cnn.conv4_1_bn.running_var.data = weights["conv4_1.1.running_var"]
-
-                cnn.conv5.weight.data = weights["conv5.0.weight"]
-                cnn.conv5_bn.weight.data = weights["conv5.1.weight"]
-                cnn.conv5_bn.bias.data = weights["conv5.1.bias"]
-                cnn.conv5_bn.running_mean.data = weights["conv5.1.running_mean"]
-                cnn.conv5_bn.running_var.data = weights["conv5.1.running_var"]
-
-                cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
-                cnn.conv5_1_bn.weight.data = weights["conv5_1.1.weight"]
-                cnn.conv5_1_bn.bias.data = weights["conv5_1.1.bias"]
-                cnn.conv5_1_bn.running_mean.data = weights["conv5_1.1.running_mean"]
-                cnn.conv5_1_bn.running_var.data = weights["conv5_1.1.running_var"]
-
-                cnn.conv6.weight.data = weights["conv6.0.weight"]
-                cnn.conv6_bn.weight.data = weights["conv6.1.weight"]
-                cnn.conv6_bn.bias.data = weights["conv6.1.bias"]
-                cnn.conv6_bn.running_mean.data = weights["conv6.1.running_mean"]
-                cnn.conv6_bn.running_var.data = weights["conv6.1.running_var"]
-
-        return cnn
+    # def load_flownet_weights(self):
+    #
+    #     if self.use_flownet is True:
+    #
+    #         flownet = torch.load(self.flownet_weights_path)
+    #         cnn = flownet['state_dict']
+    #
+    #         if self.batchnorm is False:
+    #
+    #             cnn.conv1.weight.data = weights["conv1.0.weight"]
+    #             cnn.conv1.bias.data = weights["conv1.0.bias"]
+    #
+    #             cnn.conv2.weight.data = weights["conv2.0.weight"]
+    #             cnn.conv2.bias.data = weights["conv2.0.bias"]
+    #
+    #             cnn.conv3.weight.data = weights["conv3.0.weight"]
+    #             cnn.conv3.bias.data = weights["conv3.0.bias"]
+    #
+    #             cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
+    #             cnn.conv3_1.bias.data = weights["conv3_1.0.bias"]
+    #
+    #             cnn.conv4.weight.data = weights["conv4.0.weight"]
+    #             cnn.conv4.bias.data = weights["conv4.0.bias"]
+    #
+    #             cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
+    #             cnn.conv4_1.bias.data = weights["conv4_1.0.bias"]
+    #
+    #             cnn.conv5.weight.data = weights["conv5.0.weight"]
+    #             cnn.conv5.bias.data = weights["conv5.0.bias"]
+    #
+    #             cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
+    #             cnn.conv5_1.bias.data = weights["conv5_1.0.bias"]
+    #
+    #             cnn.conv6.weight.data = weights["conv6.0.weight"]
+    #             cnn.conv6.bias.data = weights["conv6.0.bias"]
+    #
+    #         else:
+    #             cnn.conv1.weight.data = weights["conv1.0.weight"]
+    #             cnn.conv1_bn.weight.data = weights["conv1.1.weight"]
+    #             cnn.conv1_bn.bias.data = weights["conv1.1.bias"]
+    #             cnn.conv1_bn.running_mean.data = weights["conv1.1.running_mean"]
+    #             cnn.conv1_bn.running_var.data = weights["conv1.1.running_var"]
+    #
+    #             cnn.conv2.weight.data = weights["conv2.0.weight"]
+    #             cnn.conv2_bn.weight.data = weights["conv2.1.weight"]
+    #             cnn.conv2_bn.bias.data = weights["conv2.1.bias"]
+    #             cnn.conv2_bn.running_mean.data = weights["conv2.1.running_mean"]
+    #             cnn.conv2_bn.running_var.data = weights["conv2.1.running_var"]
+    #
+    #             cnn.conv3.weight.data = weights["conv3.0.weight"]
+    #             cnn.conv3_bn.weight.data = weights["conv3.1.weight"]
+    #             cnn.conv3_bn.bias.data = weights["conv3.1.bias"]
+    #             cnn.conv3_bn.running_mean.data = weights["conv3.1.running_mean"]
+    #             cnn.conv3_bn.running_var.data = weights["conv3.1.running_var"]
+    #
+    #             cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
+    #             cnn.conv3_1_bn.weight.data = weights["conv3_1.1.weight"]
+    #             cnn.conv3_1_bn.bias.data = weights["conv3_1.1.bias"]
+    #             cnn.conv3_1_bn.running_mean.data = weights["conv3_1.1.running_mean"]
+    #             cnn.conv3_1_bn.running_var.data = weights["conv3_1.1.running_var"]
+    #
+    #             cnn.conv4.weight.data = weights["conv4.0.weight"]
+    #             cnn.conv4_bn.weight.data = weights["conv4.1.weight"]
+    #             cnn.conv4_bn.bias.data = weights["conv4.1.bias"]
+    #             cnn.conv4_bn.running_mean.data = weights["conv4.1.running_mean"]
+    #             cnn.conv4_bn.running_var.data = weights["conv4.1.running_var"]
+    #
+    #             cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
+    #             cnn.conv4_1_bn.weight.data = weights["conv4_1.1.weight"]
+    #             cnn.conv4_1_bn.bias.data = weights["conv4_1.1.bias"]
+    #             cnn.conv4_1_bn.running_mean.data = weights["conv4_1.1.running_mean"]
+    #             cnn.conv4_1_bn.running_var.data = weights["conv4_1.1.running_var"]
+    #
+    #             cnn.conv5.weight.data = weights["conv5.0.weight"]
+    #             cnn.conv5_bn.weight.data = weights["conv5.1.weight"]
+    #             cnn.conv5_bn.bias.data = weights["conv5.1.bias"]
+    #             cnn.conv5_bn.running_mean.data = weights["conv5.1.running_mean"]
+    #             cnn.conv5_bn.running_var.data = weights["conv5.1.running_var"]
+    #
+    #             cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
+    #             cnn.conv5_1_bn.weight.data = weights["conv5_1.1.weight"]
+    #             cnn.conv5_1_bn.bias.data = weights["conv5_1.1.bias"]
+    #             cnn.conv5_1_bn.running_mean.data = weights["conv5_1.1.running_mean"]
+    #             cnn.conv5_1_bn.running_var.data = weights["conv5_1.1.running_var"]
+    #
+    #             cnn.conv6.weight.data = weights["conv6.0.weight"]
+    #             cnn.conv6_bn.weight.data = weights["conv6.1.weight"]
+    #             cnn.conv6_bn.bias.data = weights["conv6.1.bias"]
+    #             cnn.conv6_bn.running_mean.data = weights["conv6.1.running_mean"]
+    #             cnn.conv6_bn.running_var.data = weights["conv6.1.running_var"]
+    #
+    #     return cnn
