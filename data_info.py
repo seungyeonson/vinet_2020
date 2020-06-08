@@ -59,11 +59,37 @@ def make_datainfo(data_path=arg.datadir, type_dataset=arg.dataset) :
             f.writelines([row+'\n' for row in output_lines])
 
 class DataInfo :
+    # Create datasets for the current epoch
+    # train_seq = [0, 1, 2, 8, 9]
+    # train_startFrames = [0, 0, 0, 0, 0,0000000]
+    # train_endFrames = [4540, 1100, 4660, 4070, 1590]
+    # val_seq = [3, 4, 5, 6, 7, 10]
+    # val_startFrames = [0, 0, 0, 0, 0, 0]
+    # val_endFrames = [800, 270, 2760, 1100, 1100, 1200]
     def __init__(self):
+        self.info_dict = {}
         self.arg = args.arguments
-        self.data_path = args.datadir
+        self.data_path = arg.datadir
+        self.type_dataset = arg.dataset
+        POSE_PATH = os.path.join(self.data_path, self.type_dataset, 'poses')
+        seqs = os.listdir(POSE_PATH)
+        for seq in seqs:
+            self.info_dict[int(seq)] = {}
+            pose_path = os.path.join(POSE_PATH, seq)
+            seq_name = os.listdir(pose_path)[0]
+            pose_path = os.path.join(pose_path, seq_name)
+            with open(pose_path + '/use_data_info.txt', 'r') as f :
+                start, end = f.readlines()[4:6]
+            start = int(start.replace('startFrame : ', ''))
+            end = int(end.replace('endFrame : ', ''))
+            self.info_dict[int(seq)]['start'] = start
+            self.info_dict[int(seq)]['end'] = end
+
+    def __getitem__(self, item):
+
 
 
 if __name__ == "__main__" :
-    make_datainfo(type_dataset='euroc')
+    # make_datainfo(type_dataset='euroc')
+    DataInfo()
     pass

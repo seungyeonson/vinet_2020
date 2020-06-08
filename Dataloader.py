@@ -12,7 +12,6 @@ import args
 #Parse arguments
 arg = args.arguments
 
-# Class for providing an iterator for the KITTI visual odometry dataset
 class Dataloader(Dataset):
 
 	#constructor
@@ -61,9 +60,9 @@ class Dataloader(Dataset):
 
 		for i in range(len(self.sequences)):
 			seq = self.sequences[i]
-			print('seq',seq)
+			# print('seq',seq)
 			# print(self.startFrames[i])
-			print('Max',self.MaxFrames[seq])
+			# print('Max',self.MaxFrames[seq])
 			if self.startFrames[i] < 0 or self.startFrames[i] > self.MaxFrames[seq]:
 				raise ValueError('Invalid startFrame for sequence', str(seq).zfill(2))
 			if self.endFrames[i] <= 0 or self.endFrames[i] <= self.startFrames[i] or \
@@ -114,7 +113,7 @@ class Dataloader(Dataset):
 
 		# TODO: change variable name 'trim_img'
 		data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
-		print(frame1,frame2,data_info[frame1][3] )
+		# print(frame1,frame2,data_info[frame1][3] )
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]), mode = 'L')
 		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]), mode = 'L')
 
@@ -136,14 +135,18 @@ class Dataloader(Dataset):
 		relative_R6 = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
 							   dtype=np.float32)
 
-		pose1 = np.vstack([poses[frame1].astype(np.float32)])
-		#pose1.shape = (1,8) [[timestamp,tx, ty, tz, qx, qy, qz, qw]]
-
-
 		#relative R6 gt
-		pose2 =np.vstack([relative_R6[frame1].astype(np.float32)])
+		pose1 =np.vstack([relative_R6[frame1].astype(np.float32)])
+		pose1 = pose1[:,1:]
+		pose1 = np.resize(pose1, (1, 1, 6))
+		pose1 = torch.from_numpy(pose1).type(torch.FloatTensor).cuda()
+		# pose1.shape = (1,6) [[r1, r2, r3, r4, r5, r6]]
+
+		pose2 = np.vstack([poses[frame1].astype(np.float32)])
 		pose2 = pose2[:,1:]
-		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
+		pose2 = np.resize(pose2, (1, 1, 7))
+		pose2 = torch.from_numpy(pose2).type(torch.FloatTensor).cuda()
+		#pose2.shape = (1,7) [[tx, ty, tz, qx, qy, qz, qw]]
 
 		# TODO: change imu_index from learning_data_info.txt 's column
 		imu_index_1 = data_info[frame1][4] # 4 is imu column index in images/.../learning_data_info.txt
@@ -153,14 +156,12 @@ class Dataloader(Dataset):
 							   dtype=np.float32, comments='#')
 		imu_data = imu_data[:,1:]
 		frame1_imu =imu_data[int(imu_index_1):int(imu_index_2)+1]
-		frame2_imu =imu_data[int(imu_index_2)]
 
 		imu = np.resize(frame1_imu, (1,len(frame1_imu),6))
-
-
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
-
-		return inputTensor, pose2, imu, seqIdx, frame1, frame2, endOfSequence
+		# print('Pose :',pose2.shape)
+		# print('imu : ', imu.shape)
+		return inputTensor, imu, pose1, pose2, seqIdx, frame1, frame2, endOfSequence
 
 	def preprocessImg(self, img):
 
