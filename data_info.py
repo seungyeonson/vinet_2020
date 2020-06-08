@@ -98,8 +98,6 @@ class DataInfo :
 if __name__ == "__main__" :
     # make_datainfo(type_dataset='euroc')
 
-
-
     info_dict = DataInfo()
     train_seq = [0, 1, 2, 8, 9]
     train_startFrames = info_dict.get_startFrames(train_seq)
