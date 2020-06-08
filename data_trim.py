@@ -192,6 +192,12 @@ def trim_image_imu_gt(data_path=arg.datadir, type_dataset=arg.dataset) :
                 f.write(','.join(row) + '\n')
             print('IMU length : ({})  saved'.format(len(imus)))
 
+        with open(pose_path + '/trimed_imu.txt', 'w') as f:
+            f.write(' '.join(header_imu) + '\n')
+            for row in imus:
+                f.write(' '.join(row) + '\n')
+            # print('IMU length : ({})  saved'.format(len(imus)))
+
         with open(pose_path + '/trimed_groundtruth.csv', 'w') as f:
             f.write(','.join(header_gt) + '\n')
             for row in gts:
