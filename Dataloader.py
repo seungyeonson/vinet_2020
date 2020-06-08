@@ -30,6 +30,8 @@ class Dataloader(Dataset):
 		self.poseDir = os.path.join(self.baseDir, arg.dataset, 'poses')
 
 		# Max frames in each dataset sequence
+
+		#TODO: 0 to 10 endframe autonomously & split uzh/euroc by args
 		self.MaxFrames = [4540, 1100, 4660, 800, 270, 2760, 1100, 1100, 4070, 1590, 1200]
 
 		# Dimensions to be fed in the input
@@ -108,8 +110,8 @@ class Dataloader(Dataset):
 		# print(curImgDir, str(frame1).zfill(6) + '.png')
 
 
-
-		trim_img =np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'trimed_left_images.txt'),dtype=str)
+		# TODO: change variable name 'trim_img'
+		trim_img =np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data_info.txt'),dtype=str)
 		print(frame1,frame2,trim_img[frame1][3] )
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame1][3]), mode = 'L')
 		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame2][3]), mode = 'L')
@@ -141,8 +143,10 @@ class Dataloader(Dataset):
 		pose2 = pose2[:,1:]
 		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
 
+		# TODO: change imu_index from learning_data_info.txt 's column
 		imu_index_1 = trim_img[frame1][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
 		imu_index_2 = trim_img[frame2][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+
 		imu_data = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'trimed_imu.txt'), \
 							   dtype=np.float32, comments='#')
 		imu_data = imu_data[:,1:]
@@ -173,14 +177,15 @@ class Dataloader(Dataset):
 		return img
 
 
+if __name__ == '__main__' :
+	pass
+	# train_data = Dataloader(arg.datadir, [0,1], [0,0], [4540,1100], width = arg.imageWidth, height = arg.imageHeight)
+	# ##error
+	# train_data = Dataloader(arg.datadir, [1,0], [0,0], [1100,4540], width = arg.imageWidth, height = arg.imageHeight)
+	#
+	# print(train_data.len)
+	# for i in range(len(train_data):
+	# 	train_data[i]
 
-# train_data = Dataloader(arg.datadir, [0,1], [0,0], [4540,1100], width = arg.imageWidth, height = arg.imageHeight)
-# ##error
-# train_data = Dataloader(arg.datadir, [1,0], [0,0], [1100,4540], width = arg.imageWidth, height = arg.imageHeight)
-#
-# print(train_data.len)
-# for i in range(len(train_data):
-# 	train_data[i]
-
-#if fast test
-# train_data[1]
+	#if fast test
+	# train_data[1]
