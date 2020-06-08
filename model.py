@@ -60,7 +60,7 @@ class VINet(nn.Module):
         # If we're using batchnorm, do not use bias for the conv layers
         self.bias = not self.batchnorm
 
-        self.conv1 = nn.Conv2d(2, 64, 7, 2, 3, bias=self.bias)
+        self.conv1 = nn.Conv2d(1, 64, 7, 2, 3, bias=self.bias)
         self.conv2 = nn.Conv2d(64, 128, 5, 2, 2, bias=self.bias)
         self.conv3 = nn.Conv2d(128, 256, 5, 2, 2, bias=self.bias)
         self.conv_redir = nn.Conv2d(256, 32, kernel_size=1, stride=1)
@@ -105,7 +105,7 @@ class VINet(nn.Module):
         self.fc_out.cuda()
 
     def forward(self, x, imu, xyzq, reset_hidden=False):
-
+        print(imu.shape)
         if not self.batchnorm:
             x1 = x[:,0:1,:,:]
             x2 = x[:,1:,:,:]
@@ -127,7 +127,7 @@ class VINet(nn.Module):
             x = (F.leaky_relu(self.conv4_1(x)))
             x = (F.leaky_relu(self.conv5(x)))
             x = (F.leaky_relu(self.conv5_1(x)))
-            x = (F.leaky_relu(self.conv(x)))
+            # x = (F.leaky_relu(self.conv(x)))
             x = (F.leaky_relu(self.conv6(x)))
             x = (self.conv6_1(x))
             output1 = x
