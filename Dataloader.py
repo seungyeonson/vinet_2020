@@ -3,7 +3,7 @@ import helpers
 import numpy as np
 import os
 import scipy.misc as smc
-from skimage import io
+# from skimage import io
 import csv
 import torch
 from torch.utils.data import Dataset
@@ -31,8 +31,10 @@ class Dataloader(Dataset):
 
 		# Max frames in each dataset sequence
 
-		#TODO: 0 to 10 endframe autonomously & split uzh/euroc by args
-		self.MaxFrames = [4540, 1100, 4660, 800, 270, 2760, 1100, 1100, 4070, 1590, 1200]
+		#TODO: 0 to 10 endframe autonomously & split uzh/euroc by args.
+		self.euroc_MaxFrames = [3638, 2999, 2631, 1976, 2221, 2871, 1670, 2093, 2240, 2309, 1890]
+		if arg.dataset == 'euroc' : self.MaxFrames = self.euroc_MaxFrames
+		elif arg.dataset == 'uzh' : pass
 
 		# Dimensions to be fed in the input
 		self.width = width
@@ -59,9 +61,9 @@ class Dataloader(Dataset):
 
 		for i in range(len(self.sequences)):
 			seq = self.sequences[i]
-			print(seq)
-			print(self.startFrames[i])
-			print(self.MaxFrames[seq])
+			print('seq',seq)
+			# print(self.startFrames[i])
+			print('Max',self.MaxFrames[seq])
 			if self.startFrames[i] < 0 or self.startFrames[i] > self.MaxFrames[seq]:
 				raise ValueError('Invalid startFrame for sequence', str(seq).zfill(2))
 			if self.endFrames[i] <= 0 or self.endFrames[i] <= self.startFrames[i] or \
@@ -111,10 +113,10 @@ class Dataloader(Dataset):
 
 
 		# TODO: change variable name 'trim_img'
-		trim_img =np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data_info.txt'),dtype=str)
-		print(frame1,frame2,trim_img[frame1][3] )
-		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame1][3]), mode = 'L')
-		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame2][3]), mode = 'L')
+		data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
+		print(frame1,frame2,data_info[frame1][3] )
+		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]), mode = 'L')
+		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]), mode = 'L')
 
 		img1 = self.preprocessImg(img1)
 		img2 = self.preprocessImg(img2)
@@ -144,8 +146,8 @@ class Dataloader(Dataset):
 		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
 
 		# TODO: change imu_index from learning_data_info.txt 's column
-		imu_index_1 = trim_img[frame1][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
-		imu_index_2 = trim_img[frame2][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+		imu_index_1 = data_info[frame1][4] # 4 is imu column index in images/.../learning_data_info.txt
+		imu_index_2 = data_info[frame2][4]
 
 		imu_data = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'trimed_imu.txt'), \
 							   dtype=np.float32, comments='#')
@@ -178,14 +180,14 @@ class Dataloader(Dataset):
 
 
 if __name__ == '__main__' :
-	pass
-	# train_data = Dataloader(arg.datadir, [0,1], [0,0], [4540,1100], width = arg.imageWidth, height = arg.imageHeight)
-	# ##error
-	# train_data = Dataloader(arg.datadir, [1,0], [0,0], [1100,4540], width = arg.imageWidth, height = arg.imageHeight)
-	#
-	# print(train_data.len)
-	# for i in range(len(train_data):
-	# 	train_data[i]
+	# endframe=maxframe-1 because 2 image input(t,t+1)
+	train_data = Dataloader(arg.datadir, [0,1], [0,0], [3637,2998], width = arg.imageWidth, height = arg.imageHeight)
+	##error
+	# train_data = Dataloader(arg.datadir, [1,0], [0,0], [2999,3638], width = arg.imageWidth, height = arg.imageHeight)
+
+	print(train_data.len)
+	for i in range(3635, train_data.len):
+		train_data[i]
 
 	#if fast test
 	# train_data[1]
