@@ -65,13 +65,13 @@ class VINet(nn.Module):
         self.conv3 = nn.Conv2d(128, 256, 5, 2, 2, bias=self.bias)
         self.conv_redir = nn.Conv2d(256, 32, kernel_size=1, stride=1)
 
-        self.conv3_1 = nn.Conv2d(473, 256, bias=self.bias)
-        self.conv4 = nn.Conv2d(256, 512, stride=2, bias=self.bias)
-        self.conv4_1 = nn.Conv2d(512, 512, bias=self.bias)
-        self.conv5 = nn.Conv2d(512, 512, stride=2, bias=self.bias)
-        self.conv5_1 = nn.Conv2d(512, 512, bias=self.bias)
-        self.conv6 = nn.Conv2d(512, 1024, stride=2, bias=self.bias)
-        self.conv6_1 = nn.conv2d(1024, 1024)
+        self.conv3_1 = nn.Conv2d(473, 256, 3,1,1, bias=self.bias)
+        self.conv4 = nn.Conv2d(256, 512, 3,2,1, bias=self.bias)
+        self.conv4_1 = nn.Conv2d(512, 512,3,1,1, bias=self.bias)
+        self.conv5 = nn.Conv2d(512, 512, 3,2,1, bias=self.bias)
+        self.conv5_1 = nn.Conv2d(512, 512,3,1,1, bias=self.bias)
+        self.conv6 = nn.Conv2d(512, 1024, 3,2,1, bias=self.bias)
+        self.conv6_1 = nn.Conv2d(1024, 1024,3,1,1,bias=self.bias)
 
 
         self.rnnIMU = nn.LSTM(

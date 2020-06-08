@@ -66,7 +66,8 @@ class Dataloader(Dataset):
 			if self.startFrames[i] < 0 or self.startFrames[i] > self.MaxFrames[seq]:
 				raise ValueError('Invalid startFrame for sequence', str(seq).zfill(2))
 			if self.endFrames[i] <= 0 or self.endFrames[i] <= self.startFrames[i] or \
-					self.endFrames[i] > self.MaxFrames[seq]:
+					(self.endFrames[i]-self.startFrames[i]) > self.MaxFrames[seq]:
+				# print(self.endFrames[i],self.MaxFrames[seq])
 				raise ValueError('Invalid endFrame for sequence', str(seq).zfill(2))
 			self.len += (endFrames[i] - startFrames[i])
 			self.cumulativeLengths[i] = self.len
@@ -74,9 +75,9 @@ class Dataloader(Dataset):
 			raise ValueError('Length of the dataset cannot be negative.')
 
 		# Get dataset size
-		def __len__(self):
+	def __len__(self):
 
-			return self.len
+		return self.len
 
 	# __getitem__ method: retrieves an item from the dataset at a specific index
 	def __getitem__(self, idx):
