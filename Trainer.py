@@ -80,14 +80,7 @@ class Trainer():
         else:
             numTrainIters = len(self.train_set)
 
-        # Initialize a variable to hold the number of sampes in the current batch
-        # Here, 'batch' refers to the length of a subsequence that can be processed
-        # before performing a 'detach' operation
         elapsedBatches = 0
-
-        # Choose a generator (for iterating over the dataset, based on whether or not the
-        # sbatch flag is set to True). If sbatch is True, we're probably running on a cluster
-        # and do not want an interactive output. So, could suppress tqdm and print statements
 
         gen = trange(numTrainIters)
 
