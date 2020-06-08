@@ -2,12 +2,8 @@
 SE3 quaternion tools
 """
 
-
-import sys
-sys.path.append('/home/ssy/workspace/DeepVIO/networks/layers/Sophus/py')
-
 from sympy import *
-from sophus import *
+from utils.sophus import *
 import numpy as np
 
 from pyquaternion import Quaternion as Qua
