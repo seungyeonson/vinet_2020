@@ -283,10 +283,11 @@ def sampling_Imu(data_path=arg.datadir, type_dataset=arg.dataset) :
         pose_path = os.path.join(pose_path, seq_name)
         image_path = os.path.join(IMAGE_PATH, seq, seq_name)
 
-        with open(pose_path + '/trimed_imu.txt', 'r') as f:
-            imus = f.readlines()
+        with open(pose_path + '/trimed_imu.csv', 'r') as f:
+            # imus = f.readlines()
+            # imus = list(map(lambda x: x.strip().split(' '), imus[1:]))
+            imus = list(csv.reader(f, delimiter=',', quotechar='|'))
             header = imus[0]
-            imus = list(map(lambda x: x.strip().split(' '), imus[1:]))
             imus = imus[1:]
         imu_timestamps = [float(row[0]) for row in imus]
 
@@ -305,7 +306,7 @@ def sampling_Imu(data_path=arg.datadir, type_dataset=arg.dataset) :
             sampledImu.append(imus[foundIdx])
 
         with open(pose_path + '/sampled_imu.txt', 'w') as f:
-            f.write(header)
+            f.write(' '.join(header) + '\n')
             for row in sampledImu:
                 f.write(' '.join(row) + '\n')
 
@@ -350,8 +351,8 @@ def prepare_learn_data(data_path=arg.datadir, type_dataset=arg.dataset) :
             f.writelines(all_data)
 
 if __name__ == "__main__" :
-    # sampling_GT(type_dataset='euroc')
-    # relative_GT(type_dataset='euroc')
-    # r6_GT(type_dataset='euroc')
+    sampling_GT(type_dataset='euroc')
+    relative_GT(type_dataset='euroc')
+    r6_GT(type_dataset='euroc')
     sampling_Imu(type_dataset='euroc')
     prepare_learn_data(type_dataset='euroc')
