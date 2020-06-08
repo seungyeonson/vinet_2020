@@ -101,7 +101,7 @@ class VINet(nn.Module):
         self.fc2 = nn.Linear(128, 32)
         self.fc2.cuda()
 
-        self.fc_out = nn.Linear(32, 6)
+        self.fc_out = nn.Linear(32, 7)
         self.fc_out.cuda()
 
     def forward(self, x, imu, xyzq, reset_hidden=False):
@@ -130,7 +130,7 @@ class VINet(nn.Module):
             x = (F.leaky_relu(self.conv(x)))
             x = (F.leaky_relu(self.conv6(x)))
             x = (self.conv6_1(x))
-
+            output1 = x
 
             if reset_hidden is True:
 
@@ -177,10 +177,10 @@ class VINet(nn.Module):
                     output_fc2 = F.selu(self.fc2(output_fc1))
 
 
-            output = self.fc_out(output_fc2)
+            output2 = self.fc_out(output_fc2)
 
 
-            return output
+            return output1, output2
 
     # Initialize the weights of the network
     def init_weights(self):

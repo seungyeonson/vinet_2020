@@ -40,7 +40,9 @@ class Trainer():
 
         # Variables to hold loss
 
-        self.loss_r6 = Variable(torch.zeros(1, dtype=torch.float32).cuda(), requires_grad=False)
+        self.loss_r6 = torch.zeros(1, dtype=torch.float32).cuda()
+        self.loss_xyzq = torch.zeros(1, dtype=torch.float32).cuda()
+
         self.loss = torch.zeros(1, dtype=torch.float32).cuda()
 
         # Optimizer
@@ -70,9 +72,8 @@ class Trainer():
         self.iters += 1
 
         # Variables to store stats
-
-        Losses = []
-        totalLoss_seq = []
+        Losses_seq= []
+        TotalLoss_seq = []
 
         # Handle debug mode here
         if self.args.debug is True:
@@ -92,25 +93,28 @@ class Trainer():
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
             # Get the next frame
-            inp, r6, imu, _, _, _, endOfSeq = self.train_set[i]
+            inp, imu, r6, xyzq, _, _, _, endOfSeq = self.train_set[i]
 
             # Feed it through the model
-            pred = self.model.forward(inp, imu)
+            pred_r6, pred_xyzq = self.model.forward(inp, imu, xyzq)
 
-            curloss= Variable(self.args.scf * (torch.dist(pred, r6) ** 2), requires_grad=False)
-            self.loss_r6 += curloss
+            curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
+            curloss_xyzq = Variable(self.args.scf * (torch.dist(pred_xyzq, xyzq) ** 2), requires_grad=False)
+            self.loss_r6 += curloss_r6
+            self.loss_xyzq +=curloss_xyzq
 
 
             if np.random.normal() < -0.9:
-                tqdm.write('r6_loss: ' + str(pred.data) , file=sys.stdout)
+                tqdm.write('r6_loss: ' + str(pred_r6.data) , file=sys.stdout)
+                tqdm.write('xyzq_loss: ' + str(pred_xyzq.data), file=sys.stdout)
 
-            self.loss += self.loss_fn(pred, r6)
+            self.loss += sum([self.args.scf * self.loss_fn(pred_r6, r6), \
+					self.loss_fn(pred_xyzq, xyzq)])
 
-            curloss= curloss.detach().cpu().numpy()
-            Losses.append(curloss)
-            # totalLosses.append(curloss_rot + curloss_trans)
-            #
-            # totalLoss_seq.append(curloss_rot + curloss_trans)
+            curloss_r6= curloss_r6.detach().cpu().numpy()
+            curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
+            Losses_seq.append(curloss_r6 + curloss_xyzq)
+            TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
 
             # Handle debug mode here. Force execute the below if statement in the
             # last debug iteration
@@ -122,46 +126,14 @@ class Trainer():
 
             # if endOfSeq is True:
             if elapsedBatches >= self.args.trainBatch or endOfSeq is True:
-
                 elapsedBatches = 0
-                # Regularize only LSTM(s)
-                if self.args.gamma > 0.0:
-                    paramsDict = self.model.state_dict()
-                    # print(paramsDict.keys())
-                    if self.args.numLSTMCells == 1:
-                        reg_loss = None
-                        reg_loss = paramsDict['lstm1.weight_ih'].norm(2)
-                        reg_loss += paramsDict['lstm1.weight_hh'].norm(2)
-                        reg_loss += paramsDict['lstm1.bias_ih'].norm(2)
-                        reg_loss += paramsDict['lstm1.bias_hh'].norm(2)
-                    else:
-                        reg_loss = None
-                        reg_loss = paramsDict['lstm1.weight_ih'].norm(2)
-                        reg_loss += paramsDict['lstm1.weight_hh'].norm(2)
-                        reg_loss += paramsDict['lstm1.bias_ih'].norm(2)
-                        reg_loss += paramsDict['lstm1.bias_hh'].norm(2)
-                        reg_loss += paramsDict['lstm2.weight_ih'].norm(2)
-                        reg_loss += paramsDict['lstm2.weight_hh'].norm(2)
-                        reg_loss += paramsDict['lstm2.bias_ih'].norm(2)
-                        reg_loss += paramsDict['lstm2.bias_hh'].norm(2)
-                    self.loss = sum([self.args.gamma * reg_loss, self.loss])
 
+                tqdm.write('Total Loss: ' + str(np.mean(Losses_seq)), file=sys.stdout)
+                Losses_seq = []
 
-
-                tqdm.write('Total Loss: ' + str(np.mean(totalLoss_seq)), file=sys.stdout)
-                rotLoss_seq = []
-                transLoss_seq = []
-                totalLoss_seq = []
-
-                # Compute gradients	# ???
+                # Compute gradients
                 self.loss.backward()
 
-                # Monitor gradients
-                l = 0
-                # for p in self.model.parameters():
-                # 	if l in [j for j in range(18,26)] + [j for j in range(30,34)]:
-                # 		print(p.shape, 'GradNorm: ', p.grad.norm())
-                # 	l += 1
                 paramList = list(filter(lambda p: p.grad is not None, [param for param in self.model.parameters()]))
                 totalNorm = sum([(p.grad.data.norm(2.) ** 2.) for p in paramList]) ** (1. / 2)
                 tqdm.write('gradNorm: ' + str(totalNorm.item()))
@@ -179,18 +151,13 @@ class Trainer():
                 self.model.detach_LSTM_hidden()  # ???
 
                 # Reset loss variables
-                self.loss_rot = torch.zeros(1, dtype=torch.float32).cuda()
-                self.loss_trans = torch.zeros(1, dtype=torch.float32).cuda()
+                self.loss_r6 = torch.zeros(1, dtype=torch.float32).cuda()
+                self.loss_xyzq = torch.zeros(1, dtype=torch.float32).cuda()
                 self.loss = torch.zeros(1, dtype=torch.float32).cuda()
 
                 # Flush gradient buffers for next forward pass
                 self.model.zero_grad()
 
-        # Return loss logs for further analysis
-        if self.args.outputParameterization == 'mahalanobis':
-            return [], [], totalLosses
-        else:
-            return rotLosses, transLosses, totalLosses
 
     # Run one epoch of validation
     def validate(self):
@@ -202,12 +169,8 @@ class Trainer():
         traj_pred = None
 
         # Variables to store stats
-        rotLosses = []
-        transLosses = []
-        totalLosses = []
-        rotLoss_seq = []
-        transLoss_seq = []
-        totalLoss_seq = []
+        Losses_seq= []
+        TotalLoss_seq = []
 
         # Handle debug switch here
         if self.args.debug is True:
@@ -230,43 +193,27 @@ class Trainer():
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
             # Get the next frame
-            inp, rot_gt, trans_gt, seq, frame1, frame2, endOfSeq = self.val_set[i]
+            inp, imu, r6, xyzq, seq, frame1, frame2, endOfSeq = self.val_set[i]
             metadata = np.concatenate((np.asarray([seq]), np.asarray([frame1]), np.asarray([frame2])))
             metadata = np.reshape(metadata, (1, 3))
 
             # Feed it through the model
-            rot_pred, trans_pred = self.model.forward(inp)
+            pred_r6, pred_xyzq = self.model.forward(inp, imu, xyzq)
 
-            if self.args.outputParameterization == 'mahalanobis':
-                if traj_pred is None:
-                    traj_pred = np.concatenate((metadata, rot_pred.data.cpu().numpy()), axis=1)
-                else:
-                    cur_pred = np.concatenate((metadata, rot_pred.data.cpu().numpy()), axis=1)
-                    traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
+            if traj_pred is None:
+                traj_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
+                                                pred_xyzq.data.cpu().numpy()), axis=1)
             else:
-                if traj_pred is None:
-                    traj_pred = np.concatenate((metadata, rot_pred.data.cpu().numpy(), \
-                                                trans_pred.data.cpu().numpy()), axis=1)
-                else:
-                    cur_pred = np.concatenate((metadata, rot_pred.data.cpu().numpy(), \
-                                               trans_pred.data.cpu().numpy()), axis=1)
-                    traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
+                cur_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
+                                               pred_xyzq.data.cpu().numpy()), axis=1)
+                traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
 
             # Store losses (for further analysis)
-            if self.args.outputParameterization == 'mahalanobis':
-                # rot_pred and rot_gt are 6-vectors here, and they include translations too
-                tmpLossVar = self.loss_fn(rot_pred, rot_gt, self.train_set.infoMat).detach().cpu().numpy()
-                totalLosses.append(tmpLossVar[0])
-                totalLoss_seq.append(tmpLossVar[0])
-            else:
-                curloss_rot = (self.args.scf * self.loss_fn(rot_pred, rot_gt)).detach().cpu().numpy()
-                curloss_trans = (self.loss_fn(trans_pred, trans_gt)).detach().cpu().numpy()
-                rotLosses.append(curloss_rot)
-                transLosses.append(curloss_trans)
-                totalLosses.append(curloss_rot + curloss_trans)
-                rotLoss_seq.append(curloss_rot)
-                transLoss_seq.append(curloss_trans)
-                totalLoss_seq.append(curloss_rot + curloss_trans)
+
+            curloss_r6 = (self.args.scf * self.loss_fn(pred_r6, r6)).detach().cpu().numpy()
+            curloss_xyzq = (self.loss_fn(pred_xyzq, xyzq)).detach().cpu().numpy()
+            Losses_seq.append(curloss_r6 + curloss_xyzq)
+            TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
 
             # Detach hidden states and outputs of LSTM
             self.model.detach_LSTM_hidden()
@@ -274,14 +221,8 @@ class Trainer():
             if endOfSeq is True:
 
                 # Print stats
-                if self.args.outputParameterization != 'mahalanobis':
-                    tqdm.write('Rot Loss: ' + str(np.mean(rotLoss_seq)) + ' Trans Loss: ' + \
-                               str(np.mean(transLoss_seq)), file=sys.stdout)
-                else:
-                    tqdm.write('Total Loss: ' + str(np.mean(totalLoss_seq)), file=sys.stdout)
-                rotLoss_seq = []
-                transLoss_seq = []
-                totalLoss_seq = []
+
+                tqdm.write('Total Loss: ' + str(np.mean(TotalLoss_seq)), file=sys.stdout)
 
                 # Write predicted trajectory to file
                 saveFile = os.path.join(self.args.expDir, 'plots', 'traj', str(seq).zfill(2), \
@@ -297,8 +238,5 @@ class Trainer():
                 # Reset LSTM hidden states
                 self.model.reset_LSTM_hidden()
 
-        # Return loss logs for further analysis
-        if self.args.outputParameterization == 'mahalanobis':
-            return [], [], totalLosses
-        else:
-            return rotLosses, transLosses, totalLosses
+
+        return curloss_r6, curloss_xyzq, Losses_seq
