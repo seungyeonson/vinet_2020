@@ -30,7 +30,7 @@ class Dataloader(Dataset):
 		self.poseDir = os.path.join(self.baseDir, arg.dataset, 'poses')
 
 		# Max frames in each dataset sequence
-		self.MaxFrames = [4540, 1100, 4660, 800, 270, 2760, 1100, 1100, 4070, 1590, 1200]
+		self.MaxFrames = [4540, 1100, 4660, 800, 270, 2760, 1100, 1100, 4070, 1590, 1200]		# TODO:
 
 		# Dimensions to be fed in the input
 		self.width = width
@@ -108,7 +108,7 @@ class Dataloader(Dataset):
 		# print(curImgDir, str(frame1).zfill(6) + '.png')
 
 
-
+		# TODO:
 		trim_img =np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'trimed_left_images.txt'),dtype=str)
 		print(frame1,frame2,trim_img[frame1][3] )
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', trim_img[frame1][3]), mode = 'L')
@@ -141,8 +141,8 @@ class Dataloader(Dataset):
 		pose2 = pose2[:,1:]
 		# pose2.shape = (1,7) [[r1, r2, r3, r4, r5, r6]]
 
-		imu_index_1 = trim_img[frame1][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
-		imu_index_2 = trim_img[frame2][0] #!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+		imu_index_1 = trim_img[frame1][0] # TODO:!!!!!!!!!!!!!!!!!!!!!!!!!have to change
+		imu_index_2 = trim_img[frame2][0] # TODO:!!!!!!!!!!!!!!!!!!!!!!!!!have to change
 		imu_data = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'trimed_imu.txt'), \
 							   dtype=np.float32, comments='#')
 		imu_data = imu_data[:,1:]
