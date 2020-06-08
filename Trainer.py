@@ -136,10 +136,10 @@ class Trainer():
                         reg_loss += paramsDict['lstm1.bias_hh'].norm(2)
                     else:
                         reg_loss = None
-                        reg_loss = paramsDict['lstm2.weight_ih'].norm(2)
-                        reg_loss += paramsDict['lstm2.weight_hh'].norm(2)
-                        reg_loss += paramsDict['lstm2.bias_ih'].norm(2)
-                        reg_loss += paramsDict['lstm2.bias_hh'].norm(2)
+                        reg_loss = paramsDict['lstm1.weight_ih'].norm(2)
+                        reg_loss += paramsDict['lstm1.weight_hh'].norm(2)
+                        reg_loss += paramsDict['lstm1.bias_ih'].norm(2)
+                        reg_loss += paramsDict['lstm1.bias_hh'].norm(2)
                         reg_loss += paramsDict['lstm2.weight_ih'].norm(2)
                         reg_loss += paramsDict['lstm2.weight_hh'].norm(2)
                         reg_loss += paramsDict['lstm2.bias_ih'].norm(2)

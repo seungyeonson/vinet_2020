@@ -11,7 +11,7 @@ from utils.util import correlate
 class VINet(nn.Module):
 
     def __init__(self, imageWidth, imageHeight, activation='relu', parameterization='default', batchnorm=False, \
-                 dropout=0.0, flownet_weights_path=None, numLSTMCells=1, hidden_units_LSTM=None, \
+                 dropout=0.0, flownet_weights_path=None, numLSTMCells=1,hidden_units_imu=None, hidden_units_LSTM=None, \
                  numFC=2, FC_dims=None):
 
         super(VINet, self).__init__()
@@ -44,6 +44,7 @@ class VINet(nn.Module):
 
         self.numLSTMCells = numLSTMCells
         self.hidden_units_LSTM = hidden_units_LSTM
+        self.hidden_units_imu = hidden_units_imu
 
         # Path to FlowNet weights
         if flownet_weights_path is not None:
@@ -72,27 +73,38 @@ class VINet(nn.Module):
         self.conv6 = nn.Conv2d(512, 1024, stride=2, bias=self.bias)
         self.conv6_1 = nn.conv2d(1024, 1024)
 
-        if self.numLSTMCells == 1:
-            self.lstm1 = nn.LSTMCell(self.numConcatFeatures, self.hidden_units_LSTM[0])
-            self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-        else:
-            self.lstm1 = nn.LSTMCell(self.numConcatFeatures, self.hidden_units_LSTM[0])
-            self.lstm2 = nn.LSTMCell(self.hidden_units_LSTM[0], self.hidden_units_LSTM[1])
-            self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
-            self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
+
+        self.rnnIMU = nn.LSTM(
+            input_size=6,
+            hidden_size=hidden_units_imu[0],
+            num_layers=numLSTMCells,
+            batch_first=True
+        )
+        self.rnnIMU.cuda()
+
+        self.rnn = nn.LSTM(
+                input_size=self.numConcatFeatures,
+                hidden_size=hidden_units_LSTM[0],
+                num_layers=numLSTMCells,
+                batch_first=True
+        )
+        self.rnn.cuda()
+
+        self.h1 = torch.zeros(1, self.hidden_units_imu[0])
+        self.c1 = torch.zeros(1, self.hidden_units_imu[0])
+        self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
+        self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
 
         self.fc1 = nn.Linear(self.hidden_units_LSTM[self.numLSTMCells - 1], 128)
-
+        self.fc1.cuda()
         # self.fc1 = nn.Linear(1024, 128)
         self.fc2 = nn.Linear(128, 32)
-
+        self.fc2.cuda()
 
         self.fc_out = nn.Linear(32, 6)
+        self.fc_out.cuda()
 
-    def forward(self, x, imu, reset_hidden=False):
+    def forward(self, x, imu, xyzq, reset_hidden=False):
 
         if not self.batchnorm:
             x1 = x[:,0:1,:,:]
@@ -121,31 +133,29 @@ class VINet(nn.Module):
 
 
             if reset_hidden is True:
-                if self.numLSTMCells == 1:
-                    self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-                    self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-                else:
-                    self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-                    self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-                    self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
-                    self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
 
-            if self.numLSTMCells == 1:
-                self.h1, self.c1 = self.lstm1(imu, (self.h1, self.c1))
-            else:
-                self.h1, self.c1 = self.lstm1(imu, (self.h1, self.c1))
-                self.h2, self.c2 = self.lstm2(self.h1, (self.h2, self.c2))
+                self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
+                self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
+
+            self.h1, self.c1 = self.rnnIMU(imu, (self.h1, self.c1))
+            print(self.h1.shape)
+            imu_out = self.h1[:,-1,:]
+            print(imu_out.shape)
+
+            imu_out = imu_out.unsqueeze(1)
+            print(imu_out.shape)
+
+            x = torch.cat((x,imu_out),2)
+            x = torch.cat((x,xyzq),2)
+            self.h2, self.c2 = self.rnn(x)
+
 
             # Forward pass through the FC layers
             if self.activation == 'relu':
-                """
-                output_fc1 = F.relu(self.fc1(lstm_final_output))
-                """
                 if self.numLSTMCells == 1:
-                    output_fc1 = F.relu(self.fc1(self.h1))
+                    output_fc1 = F.relu(self.fc1(self.h2))
                 else:
                     output_fc1 = F.relu(self.fc1(self.h2))
-                # output_fc1 = F.relu(self.fc1(self.h2))
                 if self.dropout is True:
                     output_fc2 = F.dropout(F.relu(self.fc2(output_fc1)), p=self.drop_ratio, \
                                            training=self.training)
@@ -156,7 +166,7 @@ class VINet(nn.Module):
                 output_fc1 = F.selu(self.fc1(lstm_final_output))
                 """
                 if self.numLSTMCells == 1:
-                    output_fc1 = F.selu(self.fc1(self.h1))
+                    output_fc1 = F.selu(self.fc1(self.h2))
                 else:
                     output_fc1 = F.selu(self.fc1(self.h2))
                 # output_fc1 = F.selu(self.fc1(self.h2))
@@ -198,118 +208,14 @@ class VINet(nn.Module):
                         start, end = n // 4, n // 2
                         bias.data[start:end].fill_(10.)
 
-    # Detach LSTM hidden state (i.e., output) and cellstate variables to free up the
-    # computation graph. Gradients will NOT flow backward through the timestep where a
-    # detach is performed.
     def detach_LSTM_hidden(self):
-        if self.numLSTMCells == 1:
-            self.h1 = self.h1.detach()
-            self.c1 = self.c1.detach()
-        else:
-            self.h1 = self.h1.detach()
-            self.c1 = self.c1.detach()
-            self.h2 = self.h2.detach()
-            self.c2 = self.c2.detach()
+        self.h1 = self.h1.detach()
+        self.c1 = self.c1.detach()
+        self.h2 = self.h2.detach()
+        self.c2 = self.c2.detach()
 
     def reset_LSTM_hidden(self):
-        if self.numLSTMCells == 1:
-            self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-        else:
-            self.h1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.c1 = torch.zeros(1, self.hidden_units_LSTM[0])
-            self.h2 = torch.zeros(1, self.hidden_units_LSTM[1])
-            self.c2 = torch.zeros(1, self.hidden_units_LSTM[1])
-
-    # def load_flownet_weights(self):
-    #
-    #     if self.use_flownet is True:
-    #
-    #         flownet = torch.load(self.flownet_weights_path)
-    #         cnn = flownet['state_dict']
-    #
-    #         if self.batchnorm is False:
-    #
-    #             cnn.conv1.weight.data = weights["conv1.0.weight"]
-    #             cnn.conv1.bias.data = weights["conv1.0.bias"]
-    #
-    #             cnn.conv2.weight.data = weights["conv2.0.weight"]
-    #             cnn.conv2.bias.data = weights["conv2.0.bias"]
-    #
-    #             cnn.conv3.weight.data = weights["conv3.0.weight"]
-    #             cnn.conv3.bias.data = weights["conv3.0.bias"]
-    #
-    #             cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
-    #             cnn.conv3_1.bias.data = weights["conv3_1.0.bias"]
-    #
-    #             cnn.conv4.weight.data = weights["conv4.0.weight"]
-    #             cnn.conv4.bias.data = weights["conv4.0.bias"]
-    #
-    #             cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
-    #             cnn.conv4_1.bias.data = weights["conv4_1.0.bias"]
-    #
-    #             cnn.conv5.weight.data = weights["conv5.0.weight"]
-    #             cnn.conv5.bias.data = weights["conv5.0.bias"]
-    #
-    #             cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
-    #             cnn.conv5_1.bias.data = weights["conv5_1.0.bias"]
-    #
-    #             cnn.conv6.weight.data = weights["conv6.0.weight"]
-    #             cnn.conv6.bias.data = weights["conv6.0.bias"]
-    #
-    #         else:
-    #             cnn.conv1.weight.data = weights["conv1.0.weight"]
-    #             cnn.conv1_bn.weight.data = weights["conv1.1.weight"]
-    #             cnn.conv1_bn.bias.data = weights["conv1.1.bias"]
-    #             cnn.conv1_bn.running_mean.data = weights["conv1.1.running_mean"]
-    #             cnn.conv1_bn.running_var.data = weights["conv1.1.running_var"]
-    #
-    #             cnn.conv2.weight.data = weights["conv2.0.weight"]
-    #             cnn.conv2_bn.weight.data = weights["conv2.1.weight"]
-    #             cnn.conv2_bn.bias.data = weights["conv2.1.bias"]
-    #             cnn.conv2_bn.running_mean.data = weights["conv2.1.running_mean"]
-    #             cnn.conv2_bn.running_var.data = weights["conv2.1.running_var"]
-    #
-    #             cnn.conv3.weight.data = weights["conv3.0.weight"]
-    #             cnn.conv3_bn.weight.data = weights["conv3.1.weight"]
-    #             cnn.conv3_bn.bias.data = weights["conv3.1.bias"]
-    #             cnn.conv3_bn.running_mean.data = weights["conv3.1.running_mean"]
-    #             cnn.conv3_bn.running_var.data = weights["conv3.1.running_var"]
-    #
-    #             cnn.conv3_1.weight.data = weights["conv3_1.0.weight"]
-    #             cnn.conv3_1_bn.weight.data = weights["conv3_1.1.weight"]
-    #             cnn.conv3_1_bn.bias.data = weights["conv3_1.1.bias"]
-    #             cnn.conv3_1_bn.running_mean.data = weights["conv3_1.1.running_mean"]
-    #             cnn.conv3_1_bn.running_var.data = weights["conv3_1.1.running_var"]
-    #
-    #             cnn.conv4.weight.data = weights["conv4.0.weight"]
-    #             cnn.conv4_bn.weight.data = weights["conv4.1.weight"]
-    #             cnn.conv4_bn.bias.data = weights["conv4.1.bias"]
-    #             cnn.conv4_bn.running_mean.data = weights["conv4.1.running_mean"]
-    #             cnn.conv4_bn.running_var.data = weights["conv4.1.running_var"]
-    #
-    #             cnn.conv4_1.weight.data = weights["conv4_1.0.weight"]
-    #             cnn.conv4_1_bn.weight.data = weights["conv4_1.1.weight"]
-    #             cnn.conv4_1_bn.bias.data = weights["conv4_1.1.bias"]
-    #             cnn.conv4_1_bn.running_mean.data = weights["conv4_1.1.running_mean"]
-    #             cnn.conv4_1_bn.running_var.data = weights["conv4_1.1.running_var"]
-    #
-    #             cnn.conv5.weight.data = weights["conv5.0.weight"]
-    #             cnn.conv5_bn.weight.data = weights["conv5.1.weight"]
-    #             cnn.conv5_bn.bias.data = weights["conv5.1.bias"]
-    #             cnn.conv5_bn.running_mean.data = weights["conv5.1.running_mean"]
-    #             cnn.conv5_bn.running_var.data = weights["conv5.1.running_var"]
-    #
-    #             cnn.conv5_1.weight.data = weights["conv5_1.0.weight"]
-    #             cnn.conv5_1_bn.weight.data = weights["conv5_1.1.weight"]
-    #             cnn.conv5_1_bn.bias.data = weights["conv5_1.1.bias"]
-    #             cnn.conv5_1_bn.running_mean.data = weights["conv5_1.1.running_mean"]
-    #             cnn.conv5_1_bn.running_var.data = weights["conv5_1.1.running_var"]
-    #
-    #             cnn.conv6.weight.data = weights["conv6.0.weight"]
-    #             cnn.conv6_bn.weight.data = weights["conv6.1.weight"]
-    #             cnn.conv6_bn.bias.data = weights["conv6.1.bias"]
-    #             cnn.conv6_bn.running_mean.data = weights["conv6.1.running_mean"]
-    #             cnn.conv6_bn.running_var.data = weights["conv6.1.running_var"]
-    #
-    #     return cnn
+        self.h1 = torch.zeros(1, self.hidden_units_imu[0])
+        self.c1 = torch.zeros(1, self.hidden_units_imu[0])
+        self.h2 = torch.zeros(1, self.hidden_units_LSTM[0])
+        self.c2 = torch.zeros(1, self.hidden_units_LSTM[0])

@@ -93,7 +93,7 @@ if arg.modelType == 'vinet' or arg.modelType is None:
 	pass
 	# Model definition without batchnorm
 	VINet = VINet(arg.imageWidth, arg.imageHeight, activation = arg.activation, \
-	 	numLSTMCells = arg.numLSTMCells, hidden_units_LSTM = [1024, 1024])
+	 	numLSTMCells = arg.numLSTMCells, hidden_units_imu=[6,6], hidden_units_LSTM = [1024, 1024])
 elif arg.modelType == 'vinet_batchnorm':
 	pass
 	# Model definition with batchnorm
