@@ -5,13 +5,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable as V
-from utils.util import correlate
+from utils.util import correlate, conv
 
 # DeepVO model
 class VINet(nn.Module):
 
-    def __init__(self, imageWidth, imageHeight, activation='relu', parameterization='default', batchnorm=False, \
-                 dropout=0.0, flownet_weights_path=None, numLSTMCells=1,hidden_units_imu=None, hidden_units_LSTM=None, \
+    def __init__(self, imageWidth, imageHeight, activation='relu', batchnorm=False, \
+                 dropout=0.0, flownet_weights_path=None, numLSTMCells=1, hidden_units_imu=None, hidden_units_LSTM=None, \
                  numFC=2, FC_dims=None):
 
         super(VINet, self).__init__()
@@ -32,7 +32,7 @@ class VINet(nn.Module):
         self.activation = activation
 
         # Whether or not batchnorm is required
-        self.batchnorm = batchnorm
+        self.batchNorm = batchnorm
 
         # Whether or not dropout is required
         if dropout <= 0.0:
@@ -53,47 +53,43 @@ class VINet(nn.Module):
         else:
             self.use_flownet = False
 
-        """
+        """False
         Initialize variables required for the network
         """
 
         # If we're using batchnorm, do not use bias for the conv layers
-        self.bias = not self.batchnorm
+        self.bias = not self.batchNorm
 
-        self.conv1 = nn.Conv2d(1, 64, 7, 2, 3, bias=self.bias)
-        self.conv2 = nn.Conv2d(64, 128, 5, 2, 2, bias=self.bias)
-        self.conv3 = nn.Conv2d(128, 256, 5, 2, 2, bias=self.bias)
-        self.conv_redir = nn.Conv2d(256, 32, kernel_size=1, stride=1)
 
-        self.conv3_1 = nn.Conv2d(473, 256, 3,1,1, bias=self.bias)
-        self.conv4 = nn.Conv2d(256, 512, 3,2,1, bias=self.bias)
-        self.conv4_1 = nn.Conv2d(512, 512,3,1,1, bias=self.bias)
-        self.conv5 = nn.Conv2d(512, 512, 3,2,1, bias=self.bias)
-        self.conv5_1 = nn.Conv2d(512, 512,3,1,1, bias=self.bias)
-        self.conv6 = nn.Conv2d(512, 1024, 3,2,1, bias=self.bias)
-        self.conv6_1 = nn.Conv2d(1024, 1024,3,1,1,bias=self.bias)
+        self.conv1 = conv(self.batchNorm, 1, 64, kernel_size=7, stride=2)
+        self.conv2 = conv(self.batchNorm, 64, 128, kernel_size=5, stride=2)
+        self.conv3 = conv(self.batchNorm, 128, 256, kernel_size=5, stride=2)
+        self.conv_redir = conv(self.batchNorm, 256, 32, kernel_size=1, stride=1)
+
+        self.conv3_1 = conv(self.batchNorm, 473, 256)
+        self.conv4 = conv(self.batchNorm, 256, 512, stride=2)
+        self.conv4_1 = conv(self.batchNorm, 512, 512)
+        self.conv5 = conv(self.batchNorm, 512, 512, stride=2)
+        self.conv5_1 = conv(self.batchNorm, 512, 512)
+        self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
+        self.conv6_1 = conv(self.batchNorm, 1024, 1024)
 
 
         self.rnnIMU = nn.LSTM(
             input_size=6,
-            hidden_size=hidden_units_imu[0],
-            num_layers=numLSTMCells,
+            hidden_size=6, #hidden_units_imu[0],
+            num_layers=2,
             batch_first=True
         )
         self.rnnIMU.cuda()
 
         self.rnn = nn.LSTM(
-                input_size=98317,
+                input_size=24589,
                 hidden_size=hidden_units_LSTM[0],
-                num_layers=numLSTMCells,
+                num_layers =2,
                 batch_first=True
         )
         self.rnn.cuda()
-
-        self.h1 = torch.zeros(2,1, self.hidden_units_imu[0])
-        self.c1 = torch.zeros(2,1, self.hidden_units_imu[0])
-        self.h2 = torch.zeros(2,1, self.hidden_units_LSTM[1])
-        self.c2 = torch.zeros(2,1, self.hidden_units_LSTM[1])
 
         self.fc1 = nn.Linear(self.hidden_units_LSTM[self.numLSTMCells - 1], 128)
         self.fc1.cuda()
@@ -104,62 +100,62 @@ class VINet(nn.Module):
         self.fc_out = nn.Linear(32, 6)
         self.fc_out.cuda()
 
+
+
     def forward(self, x, imu, xyzq, reset_hidden=False):
-        print(imu.shape)
-        if not self.batchnorm:
+        if not self.batchNorm:
             x1 = x[:,0:1,:,:]
             x2 = x[:,1:,:,:]
 
-            x1 = (F.leaky_relu(self.conv1(x1)))
-            x1 = (F.leaky_relu(self.conv2(x1)))
-            x1 = (F.leaky_relu(self.conv3(x1)))
+            x1 = self.conv1(x1)
+            x1 = self.conv2(x1)
+            x1 = self.conv3(x1)
 
-            x2 = (F.leaky_relu(self.conv1(x2)))
-            x2 = (F.leaky_relu(self.conv2(x2)))
-            x2 = (F.leaky_relu(self.conv3(x2)))
+            x2 = self.conv1(x2)
+            x2 = self.conv2(x2)
+            x2 = self.conv3(x2)
 
-            redir = (F.leaky_relu(self.conv_redir(x1)))
+            redir = self.conv_redir(x1)
             cor = correlate(x1,x2)
             x = torch.cat([redir, cor], dim=1)
 
-            x = (F.leaky_relu(self.conv3_1(x)))
-            x = (F.leaky_relu(self.conv4(x)))
-            x = (F.leaky_relu(self.conv4_1(x)))
-            x = (F.leaky_relu(self.conv5(x)))
-            x = (F.leaky_relu(self.conv5_1(x)))
+            x = self.conv3_1(x)
+            x = self.conv4(x)
+            x = self.conv4_1(x)
+            x = self.conv5(x)
+            x = self.conv5_1(x)
             # x = (F.leaky_relu(self.conv(x)))
-            x = (F.leaky_relu(self.conv6(x)))
-            x = (self.conv6_1(x))
+            x = self.conv6(x)
+            x = self.conv6_1(x)
+            # imu = imu.view(11,1,6)
 
+            # if reset_hidden is True:
+            #
+            #     self.h1 = torch.zeros(1, 6)
+            #     self.c1 = torch.zeros(1, 6)
+            #     self.h2 = torch.zeros(1, 6)
+            #     self.c2 = torch.zeros(1, 6)
+            # for i in range(11):
+            #     self.h1, self.c1 = self.rnnIMU(imu[i], (self.h1, self.c1))
+            #     self.h2, self.c2 = self.rnnIMU(self.h1, (self.h2, self.c2))
 
-            if reset_hidden is True:
-
-                self.h1 = torch.zeros(2, 1, self.hidden_units_LSTM[0])
-                self.c1 = torch.zeros(2, 1, self.hidden_units_LSTM[0])
-
-            self.h1, self.c1 = self.rnnIMU(imu, (self.h1, self.c1))
-
-            imu_out = self.h1[:,-1,:]
-
-
+            imu_out, (imu_n,imu_c) = self.rnnIMU(imu)
+            imu_out = imu_out[:,-1,:]
             imu_out = imu_out.unsqueeze(1)
 
-            # print(x.view(1,1,-1).shape)
-            # print(imu_out.shape)
-            x = torch.cat((x.view(1,1,-1),imu_out),2)
-            # print(x.shape)
-            x = torch.cat((x,xyzq),2)
-            # print(x.shape)
-            # print(xyzq.shape)
-            self.h2, self.c2 = self.rnn(x)
+            r_in = x.view(1, 1, -1)
+            r_in = torch.cat((r_in, imu_out), 2)
+            r_in = torch.cat((r_in, xyzq), 2)
+
+            r_out, (h_n, h_c) = self.rnn(r_in)
 
 
             # Forward pass through the FC layers
             if self.activation == 'relu':
                 if self.numLSTMCells == 1:
-                    output_fc1 = F.relu(self.fc1(self.h2))
+                    output_fc1 = F.relu(self.fc1(r_out))
                 else:
-                    output_fc1 = F.relu(self.fc1(self.h2))
+                    output_fc1 = F.relu(self.fc1(r_out))
                 if self.dropout is True:
                     output_fc2 = F.dropout(F.relu(self.fc2(output_fc1)), p=self.drop_ratio, \
                                            training=self.training)
@@ -170,9 +166,9 @@ class VINet(nn.Module):
                 output_fc1 = F.selu(self.fc1(lstm_final_output))
                 """
                 if self.numLSTMCells == 1:
-                    output_fc1 = F.selu(self.fc1(self.h2))
+                    output_fc1 = F.selu(self.fc1(r_out))
                 else:
-                    output_fc1 = F.selu(self.fc1(self.h2))
+                    output_fc1 = F.selu(self.fc1(r_out))
                 # output_fc1 = F.selu(self.fc1(self.h2))
                 if self.dropout is True:
                     output_fc2 = F.dropout(F.selu(self.fc2(output_fc1)), p=self.drop_ratio, \
@@ -182,8 +178,6 @@ class VINet(nn.Module):
 
 
             output = self.fc_out(output_fc2)
-
-
 
             return output
 
@@ -213,14 +207,14 @@ class VINet(nn.Module):
                         start, end = n // 4, n // 2
                         bias.data[start:end].fill_(10.)
 
-    def detach_LSTM_hidden(self):
-        self.h1 = self.h1.detach()
-        self.c1 = self.c1.detach()
-        self.h2 = self.h2.detach()
-        self.c2 = self.c2.detach()
+    # def detach_LSTM_hidden(self):
+    #     self.h1 = self.h1.detach()
+    #     self.c1 = self.c1.detach()
+    #     self.h2 = self.h2.detach()
+    #     self.c2 = self.c2.detach()
 
-    def reset_LSTM_hidden(self):
-        self.h1 = torch.zeros(1, self.hidden_units_imu[0])
-        self.c1 = torch.zeros(1, self.hidden_units_imu[0])
-        self.h2 = torch.zeros(1, self.hidden_units_LSTM[0])
-        self.c2 = torch.zeros(1, self.hidden_units_LSTM[0])
+    # def reset_LSTM_hidden(self):
+    #     self.h1 = torch.zeros(1, 11, self.hidden_units_imu[0])
+    #     self.c1 = torch.zeros(1, 11, self.hidden_units_imu[0])
+    #     self.h2 = torch.zeros(1, 1, self.hidden_units_LSTM[0])
+    #     self.c2 = torch.zeros(1, 1, self.hidden_units_LSTM[0])

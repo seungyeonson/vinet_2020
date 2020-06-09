@@ -19,7 +19,7 @@ class Trainer():
 
     def __init__(self, args, epoch, model, train_set, val_set, loss_fn, optimizer, scheduler=None, \
                  gradClip=None):
-
+        super(Trainer, self).__init__()
         # Commandline arguments
         self.args = args
 
@@ -85,7 +85,8 @@ class Trainer():
         elapsedBatches = 0
 
         gen = trange(numTrainIters)
-
+        print("gen",gen)
+        # assert False
         # Run a pass of the dataset
         for i in gen:
 
@@ -95,26 +96,32 @@ class Trainer():
 
             # Get the next frame
             inp, imu, r6, xyzq, _, _, _, endOfSeq = self.train_set[i]
+            pred_r6 = self.model.forward(inp, imu, xyzq)
+            if self.abs_traj is None:
+                self.abs_traj = xyzq.data.cpu().detach()[0][0]
+                # Feed it through the model
 
-            # Feed it through the model
-            pred_r6= self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.cpu().detach().numpy()
-            if self.abs_traj==None:
-                self.abs_traj = xyzq
-            else:
-                self.abs_traj = se3qua.accu(self.abs_traj,numarr)
+            numarr = pred_r6.data.cpu().detach().numpy()[0][0]
+
+
+
+            self.abs_traj = se3qua.accu(self.abs_traj,numarr)
+
+            abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
+            abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
+            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor).cuda())
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
-            curloss_xyzq = Variable(self.args.scf * (torch.dist(self.abs_traj, xyzq) ** 2), requires_grad=False)
+            curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
             self.loss_r6 += curloss_r6
             self.loss_xyzq +=curloss_xyzq
 
 
             if np.random.normal() < -0.9:
                 tqdm.write('r6_loss: ' + str(pred_r6.data) , file=sys.stdout)
-                tqdm.write('xyzq_loss: ' + str(self.abs_traj.data), file=sys.stdout)
+                tqdm.write('xyzq_loss: ' + str(abs_traj_input.data), file=sys.stdout)
             self.loss += sum([self.args.scf * self.loss_fn(pred_r6, r6), \
-					self.loss_fn(self.abs_traj, xyzq)])
+					self.loss_fn(abs_traj_input, xyzq)])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
@@ -151,9 +158,9 @@ class Trainer():
                 self.optimizer.step()
 
                 # If it's the end of sequence, reset hidden states
-                if endOfSeq is True:
-                    self.model.reset_LSTM_hidden()
-                self.model.detach_LSTM_hidden()  # ???
+                # if endOfSeq is True:
+                #     self.model.reset_LSTM_hidden()
+                # self.model.detach_LSTM_hidden()  # ???
 
                 # Reset loss variables
                 self.loss_r6 = torch.zeros(1, dtype=torch.float32).cuda()
@@ -205,7 +212,7 @@ class Trainer():
 
             # Feed it through the model
             pred_r6 = self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.cpu().detach().numpy()
+            numarr = pred_r6.data.cpu().detach().numpy()
             if self.abs_traj == None:
                 self.abs_traj = xyzq
             else:

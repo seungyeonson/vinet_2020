@@ -7,7 +7,7 @@ import scipy.misc as smc
 import csv
 import torch
 from torch.utils.data import Dataset
-
+from data_info import DataInfo
 import args
 #Parse arguments
 arg = args.arguments
@@ -71,6 +71,11 @@ class Dataloader(Dataset):
 				raise ValueError('Invalid endFrame for sequence', str(seq).zfill(2))
 			self.len += (endFrames[i] - startFrames[i])
 			self.cumulativeLengths[i] = self.len
+		print(self.sequences)
+		print(self.endFrames)
+		print(self.startFrames)
+		print(self.cumulativeLengths)
+		print(self.len)
 		if self.len < 0:
 			raise ValueError('Length of the dataset cannot be negative.')
 
@@ -85,7 +90,7 @@ class Dataloader(Dataset):
 		# First determine which sequence the index belongs to, using self.cumulativeLengths
 		seqKey = helpers.firstGE(self.cumulativeLengths, idx)
 		seqIdx = self.sequences[seqKey]
-
+		# print(seqKey,seqIdx)
 		# Now select the offset from the first frame of the sequence that the current idx
 		# belongs to
 		if seqKey == 0:
@@ -117,7 +122,8 @@ class Dataloader(Dataset):
 		# print(frame1,frame2,data_info[frame1][3] )
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]), mode = 'L')
 		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]), mode = 'L')
-
+		print(frame1,data_info[frame1][3] )
+		print(frame2, data_info[frame2][3])
 		img1 = self.preprocessImg(img1)
 		img2 = self.preprocessImg(img2)
 
@@ -183,13 +189,17 @@ class Dataloader(Dataset):
 
 if __name__ == '__main__' :
 	# endframe=maxframe-1 because 2 image input(t,t+1)
-	train_data = Dataloader(arg.datadir, [0,1], [0,0], [3637,2998], width = arg.imageWidth, height = arg.imageHeight)
+	train_data = Dataloader(arg.datadir, [0,1], [22,18], [3636,3016], width = arg.imageWidth, height = arg.imageHeight)
 	##error
 	# train_data = Dataloader(arg.datadir, [1,0], [0,0], [2999,3638], width = arg.imageWidth, height = arg.imageHeight)
-
-	print(train_data.len)
-	for i in range(3635, train_data.len):
+	# Create datasets for the current epoch
+	info_dict = DataInfo()
+	train_seq = [2, 3, 4, 8, 9]
+	train_startFrames = info_dict.get_startFrames(train_seq)
+	train_endFrames = info_dict.get_endFrames(train_seq)
+	# print(train_data)
+	for i in range(3611,len(train_data)):
 		train_data[i]
 
-	#if fast test
+	# if fast test
 	# train_data[1]

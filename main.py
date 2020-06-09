@@ -93,7 +93,7 @@ if arg.modelType == 'vinet' or arg.modelType is None:
 	pass
 	# Model definition without batchnorm
 	VINet = VINet(arg.imageWidth, arg.imageHeight, activation = arg.activation, \
-	 	numLSTMCells = arg.numLSTMCells, hidden_units_imu=[6,6], hidden_units_LSTM = [1024, 1024])
+	 	numLSTMCells = arg.numLSTMCells, hidden_units_imu=[6,6], hidden_units_LSTM = [1024, 1024], batchnorm=False)
 elif arg.modelType == 'vinet_batchnorm':
 	pass
 	# Model definition with batchnorm
@@ -144,10 +144,10 @@ bestValLoss = np.inf
 
 # Create datasets for the current epoch
 info_dict = DataInfo()
-train_seq = [0, 1, 2, 3, 4, 8, 9]
+train_seq = [0, 1]#, 2, 3, 4, 8, 9]
 train_startFrames = info_dict.get_startFrames(train_seq)
 train_endFrames = info_dict.get_endFrames(train_seq)
-val_seq = [5, 6, 7, 10]
+val_seq = [5, 6]#, 7, 10]
 val_startFrames = info_dict.get_startFrames(val_seq)
 val_endFrames = info_dict.get_endFrames(val_seq)
 
