@@ -13,7 +13,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm, trange
-
+from utils import se3qua
 
 class Trainer():
 
@@ -98,10 +98,9 @@ class Trainer():
 
             # Feed it through the model
             pred_r6= self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.cpu().numpy()
+            numarr = pred_r6.cpu().detach().numpy()
             if self.abs_traj==None:
                 self.abs_traj = xyzq
-                self.abs_traj = np.resize(self.abs_traj,(1,1,6))
             else:
                 self.abs_traj = se3qua.accu(self.abs_traj,numarr)
 
@@ -113,9 +112,9 @@ class Trainer():
 
             if np.random.normal() < -0.9:
                 tqdm.write('r6_loss: ' + str(pred_r6.data) , file=sys.stdout)
-                tqdm.write('xyzq_loss: ' + str(abs_traj.data), file=sys.stdout)
+                tqdm.write('xyzq_loss: ' + str(self.abs_traj.data), file=sys.stdout)
             self.loss += sum([self.args.scf * self.loss_fn(pred_r6, r6), \
-					self.loss_fn(abs_traj, xyzq)])
+					self.loss_fn(self.abs_traj, xyzq)])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
@@ -206,10 +205,9 @@ class Trainer():
 
             # Feed it through the model
             pred_r6 = self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.cpu().numpy()
+            numarr = pred_r6.cpu().detach().numpy()
             if self.abs_traj == None:
                 self.abs_traj = xyzq
-                self.abs_traj = np.resize(self.abs_traj, (1, 1, 6))
             else:
                 self.abs_traj = se3qua.accu(self.abs_traj, numarr)
 
