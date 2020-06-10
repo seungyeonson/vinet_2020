@@ -29,7 +29,6 @@ class Dataloader(Dataset):
 		self.poseDir = os.path.join(self.baseDir, arg.dataset, 'poses')
 
 		# Max frames in each dataset sequence
-
 		#TODO: 0 to 10 endframe autonomously & split uzh/euroc by args.
 		self.euroc_MaxFrames = [3638, 2999, 2631, 1976, 2221, 2871, 1670, 2093, 2240, 2309, 1890]
 		if arg.dataset == 'euroc' : self.MaxFrames = self.euroc_MaxFrames
@@ -71,13 +70,36 @@ class Dataloader(Dataset):
 				raise ValueError('Invalid endFrame for sequence', str(seq).zfill(2))
 			self.len += (endFrames[i] - startFrames[i])
 			self.cumulativeLengths[i] = self.len
-		print(self.sequences)
-		print(self.endFrames)
-		print(self.startFrames)
-		print(self.cumulativeLengths)
-		print(self.len)
+		# print(self.sequences)
+		# print(self.endFrames)
+		# print(self.startFrames)
+		# print(self.cumulativeLengths)
+		# print(self.len)
 		if self.len < 0:
 			raise ValueError('Length of the dataset cannot be negative.')
+
+		# load all txt files which are gt, relative_gt, imu, learning_data.
+		self.poses_dict = {}
+		self.relative_R6_dict = {}
+		self.imu_data_dict = {}
+		self.data_info_dict = {}
+
+		seq_dir = os.listdir(self.poseDir)
+		for seq in seq_dir :
+			# self.poses_dict.setdefault(seq)
+			# self.relative_R6_dict.setdefault(seq)
+			# self.imu_data_dict.setdefault(seq)
+			# self.data_info_dict.setdefault(seq)
+			#
+			curPoseDir = os.path.join(self.poseDir, seq)
+			curImgDir = os.path.join(self.imgDir, seq)
+
+			seq = int(seq)
+			self.imu_data_dict[seq] = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'trimed_imu.txt'), dtype=np.float32, comments='#')
+			self.poses_dict[seq] = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'sampled_groundtruth.txt'), dtype=np.float32)
+			self.relative_R6_dict[seq] = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'sampled_relative_R6_groundtruth.txt'), dtype=np.float32)
+			self.data_info_dict[seq] = np.loadtxt(os.path.join(curImgDir, os.listdir(curImgDir)[0], 'learning_data.txt'), dtype=str)
+
 
 	# Get dataset size
 	def __len__(self):
@@ -118,12 +140,13 @@ class Dataloader(Dataset):
 
 
 		# TODO: change variable name 'trim_img'
-		data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
+		# data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
+		data_info = self.data_info_dict[seqIdx]
 		# print(frame1,frame2,data_info[frame1][3] )
 		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]), mode = 'L')
 		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]), mode = 'L')
-		print(frame1,data_info[frame1][3] )
-		print(frame2, data_info[frame2][3])
+		print('fraim 1 :',frame1,data_info[frame1][3],'  frame 2 :',frame2, data_info[frame2][3])
+		# print(frame2, data_info[frame2][3])
 		img1 = self.preprocessImg(img1)
 		img2 = self.preprocessImg(img2)
 
@@ -135,12 +158,14 @@ class Dataloader(Dataset):
 		inputTensor = inputTensor * torch.from_numpy(np.asarray([1. / 255.], \
 																dtype = np.float32)).cuda()
 		# Load pose ground-truth
-		curposeDir = os.path.join(self.poseDir, str(seqIdx).zfill(2))
+		curPoseDir = os.path.join(self.poseDir, str(seqIdx).zfill(2))
 
-		poses = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'sampled_groundtruth.txt'), \
-							   dtype=np.float32)
-		relative_R6 = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
-							   dtype=np.float32)
+		# poses = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'sampled_groundtruth.txt'), \
+		# 					   dtype=np.float32)
+		# relative_R6 = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'sampled_relative_R6_groundtruth.txt'), \
+		# 					   dtype=np.float32)
+		poses = self.poses_dict[seqIdx]
+		relative_R6 = self.relative_R6_dict[seqIdx]
 
 		#relative R6 gt
 		pose1 =np.vstack([relative_R6[frame1].astype(np.float32)])
@@ -159,8 +184,9 @@ class Dataloader(Dataset):
 		imu_index_1 = data_info[frame1][4] # 4 is imu column index in images/.../learning_data_info.txt
 		imu_index_2 = data_info[frame2][4]
 
-		imu_data = np.loadtxt(os.path.join(curposeDir, os.listdir(curposeDir)[0], 'trimed_imu.txt'), \
-							   dtype=np.float32, comments='#')
+		# imu_data = np.loadtxt(os.path.join(curPoseDir, os.listdir(curPoseDir)[0], 'trimed_imu.txt'), \
+		# 					   dtype=np.float32, comments='#')
+		imu_data = self.imu_data_dict[seqIdx]
 		imu_data = imu_data[:,1:]
 		frame1_imu =imu_data[int(imu_index_1):int(imu_index_2)+1]
 
@@ -188,8 +214,9 @@ class Dataloader(Dataset):
 
 
 if __name__ == '__main__' :
+	import time
 	# endframe=maxframe-1 because 2 image input(t,t+1)
-	train_data = Dataloader(arg.datadir, [0,1], [22,18], [3636,3016], width = arg.imageWidth, height = arg.imageHeight)
+	# train_data = Dataloader(arg.datadir, [0,1], [22,18], [3636,3016], width = arg.imageWidth, height = arg.imageHeight)
 	##error
 	# train_data = Dataloader(arg.datadir, [1,0], [0,0], [2999,3638], width = arg.imageWidth, height = arg.imageHeight)
 	# Create datasets for the current epoch
@@ -197,9 +224,16 @@ if __name__ == '__main__' :
 	train_seq = [2, 3, 4, 8, 9]
 	train_startFrames = info_dict.get_startFrames(train_seq)
 	train_endFrames = info_dict.get_endFrames(train_seq)
-	# print(train_data)
-	for i in range(3611,len(train_data)):
+	print('train_seq : {}'.format(train_seq))
+	print('train_start : {}'.format(train_startFrames))
+	print('train_end : {}'.format(train_endFrames))
+
+	train_data = Dataloader(arg.datadir, train_seq, train_startFrames, train_endFrames, width = arg.imageWidth, height = arg.imageHeight)
+	for i in range(len(train_data)):
+		cur = time.time()
 		train_data[i]
+		end = time.time()
+		print('time : %.5f\n'%(end-cur))
 
 	# if fast test
 	# train_data[1]
