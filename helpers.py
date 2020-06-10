@@ -47,3 +47,8 @@ def get_gpu_memory_map():
     gpu_memory = [int(x) for x in result.strip().split('\n')]
     gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory_map
+
+
+if __name__ == '__main__':
+    list = [2630, 4605, 6825, 9064, 11372]
+    print(firstGE(list,2583))
