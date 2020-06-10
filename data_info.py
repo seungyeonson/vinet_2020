@@ -108,7 +108,7 @@ if __name__ == "__main__" :
     print('train')
     print(train_startFrames)
     print(train_endFrames)
-
+    assert(False)
     print('val')
     print(val_startFrames)
     print(val_endFrames)
