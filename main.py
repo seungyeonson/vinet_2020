@@ -126,19 +126,22 @@ elif arg.optMethod == 'sgd':
 else:
 	optimizer = optim.Adagrad(VINet.parameters(), lr = arg.lr, lr_decay = arg.lrDecay , weight_decay = arg.weightDecay)
 
+#Initialized schduler,
+if arg.lrScheduler is not None:
+	if arg.lrScheduler == 'cosine':
+		scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max = arg.nepochs)
+	elif arg.lrScheduler == 'plateau':
+		scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 
 ########################################################################
 ###  Main loop ###
 ########################################################################
-rotLosses_train = []
-transLosses_train = []
+r6Losses_train = []
+poseLosses_train = []
 totalLosses_train = []
-rotLosses_val = []
-transLosses_val = []
+r6Losses_val = []
+poseLosses_val = []
 totalLosses_val = []
-
-f2fLosses_train = []
-f2fLosses_val = []
 bestValLoss = np.inf
 
 
@@ -192,9 +195,86 @@ for epoch in range(arg.nepochs):
 	# Training loop
 	print('===> Training: ' + str(epoch + 1) + '/' + str(arg.nepochs))
 	startTime = time.time()
-	rotLosses_train_cur, transLosses_train_cur, totalLosses_train_cur = trainer.train()
+	r6Losses_train_cur, poseLosses_train_cur, totalLosses_train_cur = trainer.train()
 	print('Train time: ', time.time() - startTime)
 
-	rotLosses_train += rotLosses_train_cur
-	transLosses_train += transLosses_train_cur
+	r6Losses_train += r6Losses_train_cur
+	poseLosses_train += poseLosses_train_cur
 	totalLosses_train += totalLosses_train_cur
+
+	if arg.lrScheduler is not None:
+		scheduler.step()
+	# Snapshot
+	if arg.snapshotStrategy == 'default':
+		if epoch % arg.snapshot == 0 or epoch == arg.nepochs - 1 or arg.snapshotStrategy == 'best':
+			print('Saving model after epoch', epoch, '...')
+			torch.save(VINet, os.path.join(arg.expDir, 'models', 'model' + str(epoch).zfill(3) + '.pt'))
+	elif arg.snapshotStrategy == 'recent':
+		# Save the most recent model
+		print('Saving model after epoch', epoch, '...')
+		torch.save(VINet, os.path.join(arg.expDir, 'models', 'recent.pt'))
+	elif arg.snapshotStrategy == 'best' or 'none':
+		# If we only want to save the best model, defer the decision
+		pass
+
+	# Validation loop
+	print('===> Validation: '  + str(epoch+1) + '/' + str(cmd.nepochs))
+	startTime = time.time()
+	r6Losses_val_cur, poseLosses_val_cur, totalLosses_val_cur = trainer.validate()
+	print('Val time: ', time.time() - startTime)
+
+	r6Losses_val += r6Losses_val_cur
+	poseLosses_val += poseLosses_val_cur
+	totalLosses_val += totalLosses_val_cur
+	# Snapshot (if using 'best' strategy)
+	if arg.snapshotStrategy == 'best':
+		if np.mean(totalLosses_val_cur) <= bestValLoss:
+			bestValLoss = np.mean(totalLosses_val_cur)
+			print('Saving recent best model after epoch', epoch, '...')
+			torch.save(VINet, os.path.join(arg.expDir, 'models', 'best' + '.pt'))
+	if arg.tensorboardX is True:
+		writer.add_scalar('loss/train/rot_loss_train', np.mean(r6Losses_train), trainer.iters)
+		writer.add_scalar('loss/train/trans_loss_train', np.mean(poseLosses_train), trainer.iters)
+		writer.add_scalar('loss/train/total_loss_train', np.mean(totalLosses_train), trainer.iters)
+		writer.add_scalar('loss/train/rot_loss_val', np.mean(r6Losses_val), trainer.iters)
+		writer.add_scalar('loss/train/trans_loss_val', np.mean(poseLosses_val), trainer.iters)
+		writer.add_scalar('loss/train/total_loss_val', np.mean(totalLosses_val), trainer.iters)
+
+	# Save training curves
+	fig, ax = plt.subplots(1)
+	ax.plot(range(len(r6Losses_train)), r6Losses_train, 'r', label = 'rot_train')
+	ax.plot(range(len(poseLosses_train)), poseLosses_train, 'g', label = 'trans_train')
+	ax.plot(range(len(totalLosses_train)), totalLosses_train, 'b', label = 'total_train')
+	ax.legend()
+	plt.ylabel('Loss')
+	plt.xlabel('Batch #')
+	fig.savefig(os.path.join(arg.expDir,'plots','loss','loss_train_' + str(epoch).zfill(3)))
+
+	fig, ax = plt.subplots(1)
+	ax.plot(range(len(r6Losses_val)), r6Losses_val, 'r', label = 'rot_train')
+	ax.plot(range(len(poseLosses_val)), poseLosses_val, 'g', label = 'trans_val')
+	ax.plot(range(len(totalLosses_val)), totalLosses_val, 'b', label = 'total_val')
+	ax.legend()
+	plt.ylabel('Loss')
+	plt.xlabel('Batch #')
+	fig.savefig(os.path.join(arg.expDir,'plots','loss', 'loss_val_' + str(epoch).zfill(3)))
+
+# Plot trajectories (validation sequences)
+	i = 0
+	for s in val_seq:
+		seqLen = val_endFrames[i] - val_startFrames[i]
+		trajFile = os.path.join(arg.expDir, 'plots', 'traj', str(s).zfill(2), \
+			'traj_' + str(epoch).zfill(3) + '.txt')
+		if os.path.exists(trajFile):
+			traj = np.loadtxt(trajFile)
+			traj = traj[:,3:]
+			if arg.outputFrame == 'local':
+				# plotSequenceRelative(arg.expDir, s, seqLen, traj, arg.datadir, arg, epoch)
+				pass
+			elif arg.outputFrame == 'global':
+				# plotSequenceAbsolute(arg.expDir, s, seqLen, traj, arg.datadir, arg, epoch)
+				pass
+		i += 1
+
+
+print('Done !!')
