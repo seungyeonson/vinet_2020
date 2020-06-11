@@ -226,8 +226,12 @@ class Trainer():
         self.abs_traj = None
 
         # Variables to store stats
-        Losses_seq= []
-        TotalLoss_seq = []
+        r6Losses = []
+        poseLosses = []
+        totalLosses = []
+        r6Loss_seq = []
+        poseLoss_seq = []
+        totalLoss_seq = []
 
         # Handle debug switch here
         if self.args.debug is True:
@@ -256,7 +260,8 @@ class Trainer():
 
             # Feed it through the model
             pred_r6 = self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.data.cpu().detach().numpy()
+            numarr = pred_r6.data.cpu().detach().numpy()[0][0]
+
             if self.abs_traj is None:
                 self.abs_traj = xyzq.data.cpu().detach()[0][0]
             if traj_pred is None:
@@ -268,21 +273,37 @@ class Trainer():
             cur_pred = np.concatenate((metadata, self.abs_traj), axis=0)
             traj_pred = np.append(traj_pred, np.resize(cur_pred, (1, -1)), axis=0)
 
+            abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
+            abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
+            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
+
+
             # Store losses (for further analysis)
+            curloss_r6 = Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
+            curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
 
-            curloss_r6 = (self.args.scf * self.loss_fn(pred_r6, r6)).detach().cpu().numpy()
-            curloss_xyzq = (self.loss_fn(self.abs_traj, xyzq)).detach().cpu().numpy()
-            Losses_seq.append(curloss_r6 + curloss_xyzq)
-            TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
 
+            curloss_r6 = curloss_r6.detach().cpu().numpy()
+            curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
+
+            r6Losses.append(curloss_r6)
+            r6Loss_seq.append(curloss_r6)
+            poseLosses.append(curloss_xyzq)
+            poseLoss_seq.append(curloss_xyzq)
+            totalLosses.append(curloss_r6 + curloss_xyzq)
+            totalLoss_seq.append(curloss_r6 + curloss_xyzq)
+            del curloss_r6
+            del curloss_xyzq
             # Detach hidden states and outputs of LSTM
             # self.model.detach_LSTM_hidden()
 
             if endOfSeq is True:
-
+                r6Loss_seq = []
+                poseLoss_seq = []
+                totalLoss_seq = []
                 # Print stats
 
-                tqdm.write('Total Loss: ' + str(np.mean(TotalLoss_seq)), file=sys.stdout)
+                tqdm.write('Total Loss: ' + str(np.mean(totalLoss_seq)), file=sys.stdout)
 
                 # Write predicted trajectory to file
                 saveFile = os.path.join(self.args.expDir, 'plots', 'traj', str(seq).zfill(2), \
@@ -300,4 +321,4 @@ class Trainer():
                 self.abs_traj = None
                 self.model.zero_grad()
 
-        return curloss_r6, curloss_xyzq, Losses_seq
+        return r6Losses, poseLosses, totalLosses
