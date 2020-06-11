@@ -3,6 +3,8 @@ import helpers
 import numpy as np
 import os
 import scipy.misc as smc
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 # from skimage import io
 import csv
 import torch
@@ -144,8 +146,8 @@ class Dataloader(Dataset):
 		# data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
 		data_info = self.data_info_dict[seqIdx]
 		# print(frame1,frame2,data_info[frame1][3] )
-		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]), mode = 'L')
-		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]), mode = 'L')
+		img1 = Image.open(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]))
+		img2 = Image.open(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]))
 		# print('seq :', seqIdx, 'fraim 1 :',frame1,data_info[frame1][3],'  frame 2 :',frame2, data_info[frame2][3])
 		# print(frame2, data_info[frame2][3])
 		img1 = self.preprocessImg(img1)
@@ -205,11 +207,23 @@ class Dataloader(Dataset):
 		# img[:,:,2] = (img[:,:,2] - self.channelwiseMean[2])/(self.channelwiseStdDev[2])
 		#
 		# Resize to the dimensions required
-		img = np.resize(img, (self.height, self.width, self.channels))
+		# print(img)
+
+
+		# print(img)
+		# img.show()
+		img = img.resize((self.width, self.height))
+		img = np.array(img)
+		img = np.expand_dims(img,0)
 
 		# Torch expects NCWH
-		img = torch.from_numpy(img)
-		img = img.permute(2,0,1)
+		try:
+			img = torch.from_numpy(img)
+
+		except TypeError:
+			print(img)
+			print(img.shape)
+			raise Exception()
 
 		return img
 
