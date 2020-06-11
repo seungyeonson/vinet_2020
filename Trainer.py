@@ -88,7 +88,7 @@ class Trainer():
             numTrainIters = len(self.train_set)
 
         elapsedBatches = 0
-
+        traj_pred = None
         gen = trange(numTrainIters)
         print("gen",gen)
         # assert False
@@ -107,10 +107,7 @@ class Trainer():
             if self.abs_traj is None:
                 self.abs_traj = xyzq.data.cpu().detach()[0][0]
                 # Feed it through the model
-
             numarr = pred_r6.data.cpu().detach().numpy()[0][0]
-
-
 
             self.abs_traj = se3qua.accu(self.abs_traj,numarr)
 
@@ -263,12 +260,13 @@ class Trainer():
             if self.abs_traj is None:
                 self.abs_traj = xyzq.data.cpu().detach()[0][0]
             if traj_pred is None:
-                traj_pred = np.concatenate((metadata, self.abs_traj.data.cpu().numpy()), axis=1)
+                traj_pred = np.concatenate((metadata, self.abs_traj.numpy()), axis=0)
+                traj_pred = np.resize(traj_pred, (1, -1))
 
             self.abs_traj = se3qua.accu(self.abs_traj, numarr)
 
-            cur_pred = np.concatenate((metadata, self.abs_traj.data.cpu().numpy()), axis=1)
-            traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
+            cur_pred = np.concatenate((metadata, self.abs_traj), axis=0)
+            traj_pred = np.append(traj_pred, np.resize(cur_pred, (1, -1)), axis=0)
 
             # Store losses (for further analysis)
 

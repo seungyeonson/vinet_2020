@@ -247,7 +247,11 @@ if __name__ == '__main__' :
 	for i in range(len(train_data)):
 
 		cur = time.time()
-		train_data[i]
+
+		metadata = np.asarray(train_data[i][7])
+		test = np.concatenate((metadata,train_seq), axis=1)
+		print(test)
+		print(metadata)
 		end = time.time()
 		print('idx :',i,'   time : %.5f'%(end-cur))
 
