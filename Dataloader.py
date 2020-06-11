@@ -13,9 +13,10 @@ from data_info import DataInfo
 import args
 #Parse arguments
 arg = args.arguments
+from torch.autograd import Variable
+import gc
 
 class Dataloader(Dataset):
-
 	#constructor
 	def __init__(self, BaseDir, sequences=None, startFrames=None, endFrames=None, \
 				 width=1280, height=384):
@@ -146,8 +147,8 @@ class Dataloader(Dataset):
 		# data_info = np.loadtxt(os.path.join(curImgDir,os.listdir(curImgDir)[0], 'learning_data.txt'),dtype=str)
 		data_info = self.data_info_dict[seqIdx]
 		# print(frame1,frame2,data_info[frame1][3] )
-		img1 = Image.open(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]))
-		img2 = Image.open(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]))
+		img1 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame1][3]),mode='L')
+		img2 = smc.imread(os.path.join(curImgDir,os.listdir(curImgDir)[0],'left', data_info[frame2][3]),mode='L')
 		# print('seq :', seqIdx, 'fraim 1 :',frame1,data_info[frame1][3],'  frame 2 :',frame2, data_info[frame2][3])
 		# print(frame2, data_info[frame2][3])
 		img1 = self.preprocessImg(img1)
@@ -157,6 +158,7 @@ class Dataloader(Dataset):
 		pair = torch.empty([1, 2*self.channels, self.height, self.width])
 
 		pair[0] = torch.cat((img1, img2), 0)
+		# gc.collect()
 		inputTensor = (pair.float()).cuda()
 		inputTensor = inputTensor * torch.from_numpy(np.asarray([1. / 255.], \
 																dtype = np.float32)).cuda()
@@ -197,7 +199,7 @@ class Dataloader(Dataset):
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
 		# print('Pose :',pose2.shape)
 		# print('imu : ', imu.shape)
-		return inputTensor, imu, pose1, pose2, seqIdx, frame1, frame2, endOfSequence
+		return Variable(inputTensor,volatile=True), imu, pose1, pose2, seqIdx, frame1, frame2, endOfSequence
 
 	def preprocessImg(self, img):
 
@@ -212,14 +214,15 @@ class Dataloader(Dataset):
 
 		# print(img)
 		# img.show()
-		img = img.resize((self.width, self.height))
+		img = np.resize(img,(self.width, self.height))
 		img = np.array(img)
 		img = np.expand_dims(img,0)
 
 		# Torch expects NCWH
 		try:
-			img = torch.from_numpy(img)
 
+			img = torch.from_numpy(img)
+			img = img.permute(0,2,1)
 		except TypeError:
 			print(img)
 			print(img.shape)

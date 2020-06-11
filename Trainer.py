@@ -1,7 +1,7 @@
 """
 Trainer class. Handles training and validation
 """
-
+import gc
 from helpers import get_gpu_memory_map
 from Dataloader import Dataloader
 # from Model import DeepVO
@@ -73,8 +73,13 @@ class Trainer():
         self.iters += 1
 
         # Variables to store stats
-        Losses_seq= []
-        TotalLoss_seq = []
+
+        r6Losses = []
+        poseLosses = []
+        totalLosses = []
+        r6Loss_seq = []
+        poseLoss_seq = []
+        totalLoss_seq = []
 
         # Handle debug mode here
         if self.args.debug is True:
@@ -97,6 +102,8 @@ class Trainer():
             # Get the next frame
             inp, imu, r6, xyzq, _, _, _, endOfSeq = self.train_set[i]
             pred_r6 = self.model.forward(inp, imu, xyzq)
+            # del inp
+            # del imu
             if self.abs_traj is None:
                 self.abs_traj = xyzq.data.cpu().detach()[0][0]
                 # Feed it through the model
@@ -109,24 +116,31 @@ class Trainer():
 
             abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
             abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
-            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor).cuda())
+            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
             curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
-            self.loss_r6 += curloss_r6
-            self.loss_xyzq +=curloss_xyzq
+            # self.loss_r6 = curloss_r6.item()
+            # self.loss_xyzq = curloss_xyzq.item()
 
 
-            if np.random.normal() < -0.9:
-                tqdm.write('r6_loss: ' + str(pred_r6.data) , file=sys.stdout)
-                tqdm.write('xyzq_loss: ' + str(abs_traj_input.data), file=sys.stdout)
-            self.loss += sum([self.args.scf * self.loss_fn(pred_r6, r6), \
-					self.loss_fn(abs_traj_input, xyzq)])
+            # if np.random.normal() < -0.9:
+            #     tqdm.write('r6(pred,gt): ' + str(pred_r6.data)+' '+ str(r6.data) ,file=sys.stdout)
+            #     tqdm.write('pose(pred,gt): ' + str(abs_traj_input.data) + ' '+str(xyzq.data), file=sys.stdout)
+
+            self.loss += sum([(self.args.scf * self.loss_fn(pred_r6, r6)).item(), \
+                              (self.loss_fn(abs_traj_input, xyzq)).item()])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
-            Losses_seq.append(curloss_r6 + curloss_xyzq)
-            TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
+            r6Losses.append(curloss_r6)
+            r6Loss_seq.append(curloss_r6)
+            poseLosses.append(curloss_xyzq)
+            poseLoss_seq.append(curloss_xyzq)
+            totalLosses.append(curloss_r6 + curloss_xyzq)
+            totalLoss_seq.append(curloss_r6 + curloss_xyzq)
+            del curloss_r6
+            del curloss_xyzq
 
             # Handle debug mode here. Force execute the below if statement in the
             # last debug iteration
@@ -137,11 +151,42 @@ class Trainer():
             elapsedBatches += 1
 
             # if endOfSeq is True:
-            if elapsedBatches >= self.args.trainBatch or endOfSeq is True:
+            if endOfSeq is True:
                 elapsedBatches = 0
 
-                tqdm.write('Total Loss: ' + str(np.mean(Losses_seq)), file=sys.stdout)
-                Losses_seq = []
+                # if self.args.gamma > 0.0:
+                #     paramsDict = self.model.state_dict()
+                #     # print(paramsDict.keys())
+                #
+                #     if self.args.numLSTMCells == 1:
+                #         reg_loss = None
+                #         reg_loss = paramsDict['lstm1.weight_ih'].norm(2)
+                #         reg_loss += paramsDict['lstm1.weight_hh'].norm(2)
+                #         reg_loss += paramsDict['lstm1.bias_ih'].norm(2)
+                #         reg_loss += paramsDict['lstm1.bias_hh'].norm(2)
+                #     else:
+                #         reg_loss = None
+                #         # reg_loss = paramsDict['rnnIMU.weight_ih_l0'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.weight_hh_l0'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.bias_ih_l0'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.bias_hh_l0'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.weight_ih_l1'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.weight_Hh_l1'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.bias_ih_l1'].norm(2)
+                #         # reg_loss += paramsDict['rnnIMU.bias_Hh_l1'].norm(2)
+                #         reg_loss = paramsDict['rnn.weight_ih_l0'].norm(2)
+                #         reg_loss += paramsDict['rnn.weight_hh_l0'].norm(2)
+                #         reg_loss += paramsDict['rnn.bias_ih_l0'].norm(2)
+                #         reg_loss += paramsDict['rnn.bias_hh_l0'].norm(2)
+                #         reg_loss += paramsDict['rnn.weight_ih_l1'].norm(2)
+                #         reg_loss += paramsDict['rnn.weight_Hh_l1'].norm(2)
+                #         reg_loss += paramsDict['rnn.bias_ih_l1'].norm(2)
+                #         reg_loss += paramsDict['rnn.bias_Hh_l1'].norm(2)
+                #     self.loss = sum([self.args.gamma * reg_loss, self.loss])
+                tqdm.write('r6 Loss: ' + str(np.mean(r6Loss_seq)) + 'pose Loss' + str(np.mean(poseLoss_seq)), file=sys.stdout)
+                r6Loss_seq = []
+                poseLoss_seq = []
+                totalLoss_seq = []
 
                 # Compute gradients
                 self.loss.backward()
@@ -169,7 +214,9 @@ class Trainer():
 
                 # Flush gradient buffers for next forward pass
                 self.model.zero_grad()
+                torch.cuda.empty_cache()
 
+        return r6Losses, poseLosses, totalLosses
 
     # Run one epoch of validation
     def validate(self):

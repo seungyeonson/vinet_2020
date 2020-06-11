@@ -84,7 +84,7 @@ class VINet(nn.Module):
         self.rnnIMU.cuda()
 
         self.rnn = nn.LSTM(
-                input_size=24589,
+                input_size=98317,
                 hidden_size=hidden_units_LSTM[0],
                 num_layers =2,
                 batch_first=True
