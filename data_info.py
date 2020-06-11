@@ -98,19 +98,19 @@ class DataInfo :
 if __name__ == "__main__" :
     # make_datainfo(type_dataset='euroc')
 
-    info_dict = DataInfo()
-    train_seq = [0, 1, 2, 8, 9]
-    train_startFrames = info_dict.get_startFrames(train_seq)
-    train_endFrames = info_dict.get_endFrames(train_seq)
-    val_seq = [3, 4, 5, 6, 7, 10]
-    val_startFrames = info_dict.get_startFrames(val_seq)
-    val_endFrames =  info_dict.get_endFrames(val_seq)
-    print('train')
-    print(train_startFrames)
-    print(train_endFrames)
-    assert(False)
-    print('val')
-    print(val_startFrames)
-    print(val_endFrames)
+    # info_dict = DataInfo()
+    # train_seq = [0, 1, 2, 8, 9]
+    # train_startFrames = info_dict.get_startFrames(train_seq)
+    # train_endFrames = info_dict.get_endFrames(train_seq)
+    # val_seq = [3, 4, 5, 6, 7, 10]
+    # val_startFrames = info_dict.get_startFrames(val_seq)
+    # val_endFrames =  info_dict.get_endFrames(val_seq)
+    # print('train')
+    # print(train_startFrames)
+    # print(train_endFrames)
+    # assert(False)
+    # print('val')
+    # print(val_startFrames)
+    # print(val_endFrames)
 
     pass

@@ -147,7 +147,7 @@ bestValLoss = np.inf
 
 # Create datasets for the current epoch
 info_dict = DataInfo()
-train_seq = [0, 1]#, 2, 3, 4, 8, 9]
+train_seq = [0, 1, 2, 3, 4, 8, 9]
 train_startFrames = info_dict.get_startFrames(train_seq)
 train_endFrames = info_dict.get_endFrames(train_seq)
 val_seq = [5, 6]#, 7, 10]
