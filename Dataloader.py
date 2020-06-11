@@ -153,7 +153,7 @@ class Dataloader(Dataset):
 		# print(frame2, data_info[frame2][3])
 		img1 = self.preprocessImg(img1)
 		img2 = self.preprocessImg(img2)
-
+		timestamp = float(data_info[frame1][1])
 		# Concatenate the images along the channel dimension (and CUDAfy them)
 		pair = torch.empty([1, 2*self.channels, self.height, self.width])
 
@@ -199,7 +199,7 @@ class Dataloader(Dataset):
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
 		# print('Pose :',pose2.shape)
 		# print('imu : ', imu.shape)
-		return Variable(inputTensor,volatile=True), imu, pose1, pose2, seqIdx, frame1, frame2, endOfSequence
+		return Variable(inputTensor,volatile=True), imu, pose1, pose2, seqIdx, frame1, frame2,timestamp, endOfSequence
 
 	def preprocessImg(self, img):
 
