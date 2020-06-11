@@ -100,7 +100,7 @@ class Trainer():
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
             # Get the next frame
-            inp, imu, r6, xyzq, _, _, _, endOfSeq = self.train_set[i]
+            inp, imu, r6, xyzq, _, _, _,timestamp, endOfSeq = self.train_set[i]
             pred_r6 = self.model.forward(inp, imu, xyzq)
             # del inp
             # del imu
@@ -214,7 +214,7 @@ class Trainer():
 
                 # Flush gradient buffers for next forward pass
                 self.model.zero_grad()
-                torch.cuda.empty_cache()
+                self.abs_traj = None
 
         return r6Losses, poseLosses, totalLosses
 
@@ -226,6 +226,7 @@ class Trainer():
 
         # Run a pass of the dataset
         traj_pred = None
+        self.abs_traj = None
 
         # Variables to store stats
         Losses_seq= []
@@ -252,26 +253,22 @@ class Trainer():
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
             # Get the next frame
-            inp, imu, r6, xyzq, seq, frame1, frame2, endOfSeq = self.val_set[i]
+            inp, imu, r6, xyzq, seq, frame1, frame2, timestamp, endOfSeq = self.val_set[i]
 
-            metadata = np.concatenate((np.asarray([seq]), np.asarray([frame1]), np.asarray([frame2])))
-            metadata = np.reshape(metadata, (1, 3))
+            metadata = np.asarray([timestamp])
 
             # Feed it through the model
             pred_r6 = self.model.forward(inp, imu, xyzq)
             numarr = pred_r6.data.cpu().detach().numpy()
-            if self.abs_traj == None:
-                self.abs_traj = xyzq
-            else:
-                self.abs_traj = se3qua.accu(self.abs_traj, numarr)
-
+            if self.abs_traj is None:
+                self.abs_traj = xyzq.data.cpu().detach()[0][0]
             if traj_pred is None:
-                traj_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
-                                                self.abs_traj.data.cpu().numpy()), axis=1)
-            else:
-                cur_pred = np.concatenate((metadata, pred_r6.data.cpu().numpy(), \
-                                               self.abs_traj.data.cpu().numpy()), axis=1)
-                traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
+                traj_pred = np.concatenate((metadata, self.abs_traj.data.cpu().numpy()), axis=1)
+
+            self.abs_traj = se3qua.accu(self.abs_traj, numarr)
+
+            cur_pred = np.concatenate((metadata, self.abs_traj.data.cpu().numpy()), axis=1)
+            traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
 
             # Store losses (for further analysis)
 
@@ -281,7 +278,7 @@ class Trainer():
             TotalLoss_seq.append(curloss_r6 + curloss_xyzq)
 
             # Detach hidden states and outputs of LSTM
-            self.model.detach_LSTM_hidden()
+            # self.model.detach_LSTM_hidden()
 
             if endOfSeq is True:
 
@@ -298,10 +295,11 @@ class Trainer():
                 traj_pred = None
 
                 # Detach LSTM hidden states
-                self.model.detach_LSTM_hidden()
+                # self.model.detach_LSTM_hidden()
 
                 # Reset LSTM hidden states
-                self.model.reset_LSTM_hidden()
+                # self.model.reset_LSTM_hidden()
                 self.abs_traj = None
+                self.model.zero_grad()
 
         return curloss_r6, curloss_xyzq, Losses_seq

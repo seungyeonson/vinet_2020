@@ -218,7 +218,7 @@ for epoch in range(arg.nepochs):
 		pass
 
 	# Validation loop
-	print('===> Validation: '  + str(epoch+1) + '/' + str(cmd.nepochs))
+	print('===> Validation: '  + str(epoch+1) + '/' + str(arg.nepochs))
 	startTime = time.time()
 	r6Losses_val_cur, poseLosses_val_cur, totalLosses_val_cur = trainer.validate()
 	print('Val time: ', time.time() - startTime)
