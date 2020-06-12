@@ -134,8 +134,8 @@ class Trainer():
             #     tqdm.write('pose(pred,gt): ' + str(abs_traj_input.data) + ' '+str(xyzq.data), file=sys.stdout)
 
             self.loss += sum([self.args.scf * (self.loss_fn(pred_r6, r6)).item(),
-                              self.args.scf * (self.loss_fn(abs_traj_input[:,:,:3], xyzq[:,:,:3])).item(),
-                              (self.loss_fn(abs_traj_input[:,:,3:], xyzq[:,:,3:])).item()])
+                              self.args.scf * self.loss_fn(abs_traj_input[:,:,:3], xyzq[:,:,:3]).item(),
+                              self.loss_fn(abs_traj_input[:,:,3:], xyzq[:,:,3:]).item()])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
