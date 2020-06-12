@@ -189,23 +189,22 @@ class VINet(nn.Module):
                 nn.init.xavier_normal_(m.weight.data)
                 if m.bias is not None:
                     m.bias.data.zero_()
+                    # print('linear zero')
             if isinstance(m, nn.Conv2d):
                 # print('$ Conv2d')
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
                 if m.bias is not None:
                     m.bias.data.zero_()
-            if isinstance(m, nn.LSTMCell):
-                # print('% LSTMCell')
+                    # print('bias zero')
+            if isinstance(m, nn.LSTM):
+                # print('% LSTM')
                 for name, param in m.named_parameters():
                     if 'weight' in name:
-                        nn.init.orthogonal(param)
+                        nn.init.orthogonal_(param)
+                        # print('lstm weight')
                     elif 'bias' in name:
                         nn.init.constant_(param, 0.)
-                        bias = getattr(m, name)
-                        n = bias.size(0)
-                        start, end = n // 4, n // 2
-                        bias.data[start:end].fill_(10.)
 
     # def detach_LSTM_hidden(self):
     #     self.h1 = self.h1.detach()

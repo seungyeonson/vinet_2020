@@ -9,7 +9,7 @@ Main script: Train and Test VINet on the euroc, uzh, etc...
 # an error and the code crashes while storing plots (after validation).
 import matplotlib
 matplotlib.use('Agg')
-
+from tensorboardX import SummaryWriter
 from model import VINet
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,7 +81,7 @@ argFile.close()
 
 # TensorboardX visualization support
 if arg.tensorboardX is True:
-	from tensorboardX import SummaryWriter
+
 	writer = SummaryWriter(log_dir = arg.expDir)
 
 ########################################################################
@@ -103,15 +103,15 @@ elif arg.modelType == 'our_model':
 	pass
 
 # Load a pretrained DeepVO model
-if arg.modelType == 'vinet':
+if arg.loadModel == 'vinet':
 	# deepVO = torch.load(cmd.loadModel)
 	pass
 else:
 	# Initialize weights for fully connected layers and for LSTMCells
-	# deepVO.init_weights()
+	VINet.init_weights()
 	# CUDAfy
-	# deepVO.cuda()
-	pass
+	VINet.cuda()
+
 print('Loaded! Good to launch!')
 
 ########################################################################
@@ -193,6 +193,7 @@ for epoch in range(arg.nepochs):
 	trainer = Trainer(arg, epoch, VINet, train_data, val_data, criterion, optimizer, \
 					  scheduler=None)
 
+
 	# Training loop
 	print('===> Training: ' + str(epoch + 1) + '/' + str(arg.nepochs))
 	startTime = time.time()
@@ -209,8 +210,8 @@ for epoch in range(arg.nepochs):
 	if arg.lrScheduler is not None:
 		scheduler.step()
 	# Snapshot
-	if arg.snapshotStrategy == 'default':
-		if epoch % arg.snapshot == 0 or epoch == arg.nepochs - 1 or arg.snapshotStrategy == 'best':
+	if arg.snapshotStrategy == 'default' or 'best':
+		if epoch % arg.snapshot == 0 or epoch == arg.nepochs - 1:
 			print('Saving model after epoch', epoch, '...')
 			torch.save(VINet, os.path.join(arg.expDir, 'models', 'model' + str(epoch).zfill(3) + '.pt'))
 	elif arg.snapshotStrategy == 'recent':
@@ -237,12 +238,13 @@ for epoch in range(arg.nepochs):
 			print('Saving recent best model after epoch', epoch, '...')
 			torch.save(VINet, os.path.join(arg.expDir, 'models', 'best' + '.pt'))
 	if arg.tensorboardX is True:
-		writer.add_scalar('loss/train/rot_loss_train', np.mean(r6Losses_train), trainer.iters)
-		writer.add_scalar('loss/train/trans_loss_train', np.mean(poseLosses_train), trainer.iters)
-		writer.add_scalar('loss/train/total_loss_train', np.mean(totalLosses_train), trainer.iters)
-		writer.add_scalar('loss/train/rot_loss_val', np.mean(r6Losses_val), trainer.iters)
-		writer.add_scalar('loss/train/trans_loss_val', np.mean(poseLosses_val), trainer.iters)
-		writer.add_scalar('loss/train/total_loss_val', np.mean(totalLosses_val), trainer.iters)
+		writer.add_scalar('loss/train/r6_loss_train', np.mean(r6Losses_train), epoch)
+		writer.add_scalar('loss/train/pose_loss_train', np.mean(poseLosses_train), epoch)
+		writer.add_scalar('loss/train/total_loss_train', np.mean(totalLosses_train), epoch)
+		writer.add_scalar('loss/train/r6_loss_val', np.mean(r6Losses_val), epoch)
+		writer.add_scalar('loss/train/pose_loss_val', np.mean(poseLosses_val), epoch)
+		writer.add_scalar('loss/train/total_loss_val', np.mean(totalLosses_val), epoch)
+		writer.flush()
 
 	# Save training curves
 	fig, ax = plt.subplots(1)

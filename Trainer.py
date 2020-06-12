@@ -123,12 +123,11 @@ class Trainer():
             # raise Exception()
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
-            curloss_xyzq = Variable((torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
+            curloss_xyzq = Variable(torch.dist(abs_traj_input, xyzq) ** 2, requires_grad=False)
             curloss_xyzq_rot = Variable(self.args.scf * (torch.dist(abs_traj_input[:,:,3:], xyzq[:,:,3:]) ** 2), requires_grad=False)
             curloss_xyzq_trans = Variable((torch.dist(abs_traj_input[:, :, :3], xyzq[:, :, :3]) ** 2), requires_grad=False)
-            self.loss_r6 = curloss_r6.item()
-            self.loss_xyzq = curloss_xyzq.item()
-
+            self.loss_r6 = curloss_r6
+            self.loss_xyzq = curloss_xyzq
 
             # if np.random.normal() < -0.9:
             #     tqdm.write('r6(pred,gt): ' + str(pred_r6.data)+' '+ str(r6.data) ,file=sys.stdout)
