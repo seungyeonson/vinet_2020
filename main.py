@@ -179,6 +179,7 @@ for epoch in range(arg.nepochs):
 	#train split by sequence
 	permutation = np.random.permutation(len(train_seq_cur_epoch))
 	train_seq_cur_epoch = [train_seq_cur_epoch[p] for p in permutation]
+	print(train_seq_cur_epoch)
 	train_startFrames_cur_epoch = [train_startFrames_cur_epoch[p] for p in permutation]
 	train_endFrames_cur_epoch = [train_endFrames_cur_epoch[p] for p in permutation]
 
@@ -196,6 +197,9 @@ for epoch in range(arg.nepochs):
 	print('===> Training: ' + str(epoch + 1) + '/' + str(arg.nepochs))
 	startTime = time.time()
 	r6Losses_train_cur, poseLosses_train_cur, totalLosses_train_cur = trainer.train()
+	print('r6Losees_train_cur :', r6Losses_train_cur)
+	print('poseLosses_train_cur :', poseLosses_train_cur)
+	print('totalLosses_train_cur :', totalLosses_train_cur)
 	print('Train time: ', time.time() - startTime)
 
 	r6Losses_train += r6Losses_train_cur

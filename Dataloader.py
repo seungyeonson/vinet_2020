@@ -198,7 +198,7 @@ class Dataloader(Dataset):
 		imu = np.resize(frame1_imu, (1,len(frame1_imu),6))
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
 		# print('Pose :',pose2.shape)
-		# print('imu : ', imu.shape)
+		# print('imu :', imu.shape)
 		return inputTensor, imu, pose1, pose2, seqIdx, frame1, frame2,timestamp, endOfSequence
 
 	def preprocessImg(self, img):

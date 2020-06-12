@@ -19,6 +19,7 @@ class Trainer():
 
     def __init__(self, args, epoch, model, train_set, val_set, loss_fn, optimizer, scheduler=None, \
                  gradClip=None):
+
         super(Trainer, self).__init__()
         # Commandline arguments
         self.args = args
@@ -94,7 +95,6 @@ class Trainer():
         # assert False
         # Run a pass of the dataset
         for i in gen:
-
             if self.args.profileGPUUsage is True:
                 gpu_memory_map = get_gpu_memory_map()
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
@@ -105,28 +105,38 @@ class Trainer():
             # del inp
             # del imu
             if self.abs_traj is None:
-                self.abs_traj = xyzq.data.cpu().detach()[0][0]
+                # TODO : 여기 초기값 잘 부르고 잘 적분해서 계산하고 있는지 확인해야됨.
+                self.abs_traj = xyzq.data.cpu()[0][0]
                 # Feed it through the model
-            numarr = pred_r6.data.cpu().detach().numpy()[0][0]
+            numarr = pred_r6.data.cpu().numpy()[0][0]
+            # print('start :',self.abs_traj)
+            # print('numarr :', numarr)
 
             self.abs_traj = se3qua.accu(self.abs_traj,numarr)
+            # print('abs_traj :', self.abs_traj)
+
 
             abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
             abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
             abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
+            # print(abs_traj_input)
+            # raise Exception()
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
-            curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
-            # self.loss_r6 = curloss_r6.item()
-            # self.loss_xyzq = curloss_xyzq.item()
+            curloss_xyzq = Variable((torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
+            curloss_xyzq_rot = Variable(self.args.scf * (torch.dist(abs_traj_input[:,:,3:], xyzq[:,:,3:]) ** 2), requires_grad=False)
+            curloss_xyzq_trans = Variable((torch.dist(abs_traj_input[:, :, :3], xyzq[:, :, :3]) ** 2), requires_grad=False)
+            self.loss_r6 = curloss_r6.item()
+            self.loss_xyzq = curloss_xyzq.item()
 
 
             # if np.random.normal() < -0.9:
             #     tqdm.write('r6(pred,gt): ' + str(pred_r6.data)+' '+ str(r6.data) ,file=sys.stdout)
             #     tqdm.write('pose(pred,gt): ' + str(abs_traj_input.data) + ' '+str(xyzq.data), file=sys.stdout)
 
-            self.loss += sum([(self.args.scf * self.loss_fn(pred_r6, r6)).item(), \
-                              (self.loss_fn(abs_traj_input, xyzq)).item()])
+            self.loss += sum([self.args.scf * (self.loss_fn(pred_r6, r6)).item(),
+                              self.args.scf * (self.loss_fn(abs_traj_input[:,:,:3], xyzq[:,:,:3])).item(),
+                              (self.loss_fn(abs_traj_input[:,:,3:], xyzq[:,:,3:])).item()])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
@@ -268,6 +278,7 @@ class Trainer():
                 traj_pred = np.concatenate((metadata, self.abs_traj.numpy()), axis=0)
                 traj_pred = np.resize(traj_pred, (1, -1))
 
+
             self.abs_traj = se3qua.accu(self.abs_traj, numarr)
 
             cur_pred = np.concatenate((metadata, self.abs_traj), axis=0)
@@ -308,6 +319,7 @@ class Trainer():
                 # Write predicted trajectory to file
                 saveFile = os.path.join(self.args.expDir, 'plots', 'traj', str(seq).zfill(2), \
                                         'traj_' + str(self.curEpoch).zfill(3) + '.txt')
+                # TODO : 트래젝토리 저장부분 왜 한개만 저장하고 마지막 저장은 좀 이상하게 (짧게, 그리고 6컬럼만) 되는지 확인
                 np.savetxt(saveFile, traj_pred, newline='\n')
 
                 # Reset variable, to store new trajectory later on
