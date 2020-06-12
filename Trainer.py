@@ -116,9 +116,9 @@ class Trainer():
             abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
-            curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
-            # self.loss_r6 = curloss_r6.item()
-            # self.loss_xyzq = curloss_xyzq.item()
+            curloss_xyzq = Variable(torch.dist(abs_traj_input, xyzq) ** 2, requires_grad=False)
+            self.loss_r6 += curloss_r6
+            self.loss_xyzq += curloss_xyzq
 
 
             # if np.random.normal() < -0.9:
