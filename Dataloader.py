@@ -199,7 +199,7 @@ class Dataloader(Dataset):
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
 		# print('Pose :',pose2.shape)
 		# print('imu : ', imu.shape)
-		return Variable(inputTensor,volatile=True), imu, pose1, pose2, seqIdx, frame1, frame2,timestamp, endOfSequence
+		return inputTensor, imu, pose1, pose2, seqIdx, frame1, frame2,timestamp, endOfSequence
 
 	def preprocessImg(self, img):
 
@@ -248,7 +248,11 @@ if __name__ == '__main__' :
 	for i in range(len(train_data)):
 
 		cur = time.time()
-		train_data[i]
+
+		metadata = np.asarray(train_data[i][7])
+		test = np.concatenate((metadata,train_seq), axis=1)
+		print(test)
+		print(metadata)
 		end = time.time()
 		print('idx :',i,'   time : %.5f'%(end-cur))
 
