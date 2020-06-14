@@ -124,8 +124,10 @@ class Trainer():
 
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
             curloss_xyzq = Variable(torch.dist(abs_traj_input, xyzq) ** 2, requires_grad=False)
-            curloss_xyzq_rot = Variable(self.args.scf * (torch.dist(abs_traj_input[:,:,3:], xyzq[:,:,3:]) ** 2), requires_grad=False)
-            curloss_xyzq_trans = Variable((torch.dist(abs_traj_input[:, :, :3], xyzq[:, :, :3]) ** 2), requires_grad=False)
+
+            curloss_xyzq_trans = Variable(self.args.scf * 10 * (torch.dist(abs_traj_input[:, :, :3], xyzq[:, :, :3]) ** 2), requires_grad=False)
+            curloss_xyzq_rot = Variable(torch.dist(abs_traj_input[:, :, 3:], xyzq[:, :, 3:]) ** 2,
+                                        requires_grad=False)
             self.loss_r6 = curloss_r6
             self.loss_xyzq = curloss_xyzq
 
@@ -134,17 +136,19 @@ class Trainer():
             #     tqdm.write('pose(pred,gt): ' + str(abs_traj_input.data) + ' '+str(xyzq.data), file=sys.stdout)
 
             self.loss += sum([self.args.scf * (self.loss_fn(pred_r6, r6)).item(),
-                              self.args.scf * self.loss_fn(abs_traj_input[:,:,:3], xyzq[:,:,:3]).item(),
+                              self.args.scf * 10 * self.loss_fn(abs_traj_input[:,:,:3], xyzq[:,:,:3]).item(),
                               self.loss_fn(abs_traj_input[:,:,3:], xyzq[:,:,3:]).item()])
 
             curloss_r6= curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
+            curloss_xyzq_rot = curloss_xyzq_rot.detach().cpu().numpy()
+            curloss_xyzq_trans = curloss_xyzq_trans.detach().cpu().numpy()
             r6Losses.append(curloss_r6)
             r6Loss_seq.append(curloss_r6)
-            poseLosses.append(curloss_xyzq)
-            poseLoss_seq.append(curloss_xyzq)
-            totalLosses.append(curloss_r6 + curloss_xyzq)
-            totalLoss_seq.append(curloss_r6 + curloss_xyzq)
+            poseLosses.append(curloss_xyzq_rot+curloss_xyzq_trans)
+            poseLoss_seq.append(curloss_xyzq_rot+curloss_xyzq_trans)
+            totalLosses.append(curloss_r6 + curloss_xyzq_rot+curloss_xyzq_trans)
+            totalLoss_seq.append(curloss_r6 + curloss_xyzq_rot+curloss_xyzq_trans)
             del curloss_r6
             del curloss_xyzq
 
@@ -291,17 +295,22 @@ class Trainer():
             # Store losses (for further analysis)
             curloss_r6 = Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
             curloss_xyzq = Variable(self.args.scf * (torch.dist(abs_traj_input, xyzq) ** 2), requires_grad=False)
-
+            curloss_xyzq_trans = Variable(
+                self.args.scf * 10 * (torch.dist(abs_traj_input[:, :, :3], xyzq[:, :, :3]) ** 2), requires_grad=False)
+            curloss_xyzq_rot = Variable(torch.dist(abs_traj_input[:, :, 3:], xyzq[:, :, 3:]) ** 2,
+                                        requires_grad=False)
 
             curloss_r6 = curloss_r6.detach().cpu().numpy()
             curloss_xyzq = curloss_xyzq.detach().cpu().numpy()
+            curloss_xyzq_rot = curloss_xyzq_rot.detach().cpu().numpy()
+            curloss_xyzq_trans = curloss_xyzq_trans.detach().cpu().numpy()
 
             r6Losses.append(curloss_r6)
             r6Loss_seq.append(curloss_r6)
-            poseLosses.append(curloss_xyzq)
-            poseLoss_seq.append(curloss_xyzq)
-            totalLosses.append(curloss_r6 + curloss_xyzq)
-            totalLoss_seq.append(curloss_r6 + curloss_xyzq)
+            poseLosses.append(curloss_xyzq_rot + curloss_xyzq_trans)
+            poseLoss_seq.append(curloss_xyzq_rot + curloss_xyzq_trans)
+            totalLosses.append(curloss_r6 + curloss_xyzq_rot + curloss_xyzq_trans)
+            totalLoss_seq.append(curloss_r6 + curloss_xyzq_rot + curloss_xyzq_trans)
             del curloss_r6
             del curloss_xyzq
             # Detach hidden states and outputs of LSTM
