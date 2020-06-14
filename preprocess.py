@@ -1,21 +1,11 @@
 #ground-truth processing
-#TODO:
-# 1. GT data sampling. ( near by Image Timestamp )
-# 2. make relative_GT
-# 3. make R6_GT
 import os
 import args
 import csv
 import numpy as np
-
-import sys
-# to import sophuspy from local build
-# sys.path.append('/home/mongsil/workspace/build_ws_tf114/Sophus/py')
-from sympy import Matrix
-from utils.sophus import Se3, So3, Quaternion
 import quaternion  # pip install numpy numpy-quaternion numba
 import decimal
-# from pyquaternion import Quaternion
+from utils.se3qua import xyzQuaternion2se3_
 
 arg = args.arguments
 
@@ -33,44 +23,6 @@ def float_to_str(f):
     """
     d1 = ctx.create_decimal(repr(f))
     return format(d1, 'f')
-
-## xyz quaternion ==> se(3)
-def normalize(ww, wx, wy, wz):  # make first number positive
-    q = [ww, wx, wy, wz]
-    ## Find first negative
-    idx = -1
-    for i in range(len(q)):
-        if q[i] < 0:
-            idx = i
-            break
-        elif q[i] > 0:
-            break
-    # -1 if should not filp, >=0  flipping index
-    if idx >= 0:
-        ww = ww * -1
-        wx = wx * -1
-        wy = wy * -1
-        wz = wz * -1
-    return ww, wx, wy, wz
-
-
-def xyzQuaternion2se3_(arr):
-    # the dataset was like => tx ty tz qx qy qz qw
-    x, y, z, wx, wy, wz, ww = arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], arr[6]
-    trans = Matrix([x, y, z])
-    ww, wx, wy, wz = normalize(ww, wx, wy, wz)
-
-    q_real = ww
-    q_img = Matrix([wx, wy, wz])
-    q = Quaternion(q_real, q_img)
-    # q = Quaternion(ww, wx, wy, wz)
-    R = So3(q)
-
-    RT = Se3(R, trans)
-    # print(RT.log())
-    numpy_vec = np.array(RT.log()).astype(float)  # SE3 to se3
-
-    return np.concatenate(numpy_vec)
 
 def getClosestIndex(searchTime, searchStartIndex, timeList):
     foundIdx = 0
@@ -139,8 +91,6 @@ def sampling_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
             pose_path = os.path.join(pose_path, seq_name)
             image_path = os.path.join(IMAGE_PATH, seq, seq_name)
 
-            gt_timestamps = None
-            image_timestamps = None
             with open(pose_path + '/trimed_groundtruth.csv', 'r') as f:
                 gts = list(csv.reader(f, delimiter=',', quotechar='|'))
                 header = gts[0]
@@ -255,12 +205,13 @@ def r6_GT(data_path=arg.datadir, type_dataset=arg.dataset) :
         for i in range(len(traj_rel)):
             timestamp = traj_rel[i][0]
             arr = np.array(traj_rel[i][1:]).astype(float)
+            arr[[3,6]] = arr[[6,3]]
             se3R6 = xyzQuaternion2se3_(arr)
             traj_rel_se3R6.append(se3R6)
 
         with open(pose_path + '/sampled_relative_R6_groundtruth.txt', 'w') as f:
             # f.write(header)
-            f.write('# timestamp ang_vel_x ang_vel_y ang_vel_z lin_acc_x lin_acc_y lin_acc_z\n')
+            f.write('# timestamp R6\n')
 
             for i in range(len(traj_rel_se3R6)):
                 r1 = float_to_str(traj_rel_se3R6[i][0])
@@ -352,8 +303,8 @@ def prepare_learn_data(data_path=arg.datadir, type_dataset=arg.dataset) :
             f.writelines(all_data)
 
 if __name__ == "__main__" :
-    sampling_GT(type_dataset='euroc')
-    relative_GT(type_dataset='euroc')
+    # sampling_GT(type_dataset='euroc')
+    # relative_GT(type_dataset='euroc')
     r6_GT(type_dataset='euroc')
-    sampling_Imu(type_dataset='euroc')
-    prepare_learn_data(type_dataset='euroc')
+    # sampling_Imu(type_dataset='euroc')
+    # prepare_learn_data(type_dataset='euroc')

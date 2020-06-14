@@ -2,7 +2,7 @@
 SE3 quaternion tools
 """
 
-from sympy import *
+from sympy import Matrix
 from utils.sophus import *
 import numpy as np
 
