@@ -188,22 +188,16 @@ class VINet(nn.Module):
 
             if isFirst :
                 self.se3comp_output = xyzq
-# For save last output once oh I missed something
 
-            self.se3comp_output[:,:,[3,4,5,6]] = self.se3comp_output[:,:,[6,3,4,5]]
-            print('before se3comp :', self.se3comp_output)
             self.se3comp_output = self.se3comp(self.se3comp_output.view(1,7,-1) , output.view(1, 6, -1))
-            print('after se3comp :', self.se3comp_output)
-            self.se3comp_output[:,:,[3,4,5,6]] = self.se3comp_output[:,:,[6,3,4,5]]
-            print('after se3comp and rearange it :', self.se3comp_output)
-            raise Exception
             # TODO : 1. change order : ww wx wy wz => wx wy wz ww 2020-06-15
             # TODO : 2. move se3comp to Trainer.py ( should be good )
             # TODO : 3. Clearly Coding
 
+            ## TODO : ㄸ로스를 박아야한다. 백워드로. 이 앱솔르트 로스를. 다녀와서 ^^
+
             output_abs = self.linear_out(self.se3comp_output.view(1,1,-1))
             self.se3comp_output = output_abs
-# It's better assign after pass through FC layer?
 
             return output, output_abs
 

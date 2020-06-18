@@ -1,7 +1,7 @@
 result/
 .idea/
 __pycache__/
-#args.py
+args.py
 args.pyc
 .gitignore
 tttt.py
