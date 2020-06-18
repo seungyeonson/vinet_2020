@@ -213,4 +213,3 @@ def trim_image_imu_gt(data_path=arg.datadir, type_dataset=arg.dataset) :
 if __name__ == "__main__" :
     trim_image_imu_gt(type_dataset='euroc')
     # trim_image_imu(type_dataset='euroc')
-    #TODO: 시퀀스 별로 GT가 있는 것과 없는 것의 처리를 다르게 잘 해줘야함 유지에이치 할 때 꼭 필요 !!

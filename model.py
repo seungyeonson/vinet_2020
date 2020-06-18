@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable as V
 from utils.util import correlate, conv
+from layers.se3comp_pytorch.SE3Comp import SE3Comp
 
 # DeepVO model
 class VINet(nn.Module):
@@ -84,10 +85,11 @@ class VINet(nn.Module):
         self.rnnIMU.cuda()
 
         self.rnn = nn.LSTM(
-                input_size=98317,
-                hidden_size=hidden_units_LSTM[0],
-                num_layers =2,
-                batch_first=True
+            input_size=6157,
+            # input_size=98317,
+            hidden_size=hidden_units_LSTM[0],
+            num_layers =2,
+            batch_first=True
         )
         self.rnn.cuda()
 
@@ -101,8 +103,15 @@ class VINet(nn.Module):
         self.fc_out.cuda()
 
 
+        self.se3comp_output = None #???
+        self.se3comp = SE3Comp()
+        self.se3comp.cuda()
 
-    def forward(self, x, imu, xyzq, reset_hidden=False):
+        self.linear_out = nn.Linear(7,7)
+        self.linear_out.cuda()
+
+
+    def forward(self, x, imu, xyzq, isFirst, reset_hidden=False):
         if not self.batchNorm:
             x1 = x[:,0:1,:,:]
             x2 = x[:,1:,:,:]
@@ -149,7 +158,6 @@ class VINet(nn.Module):
 
             r_out, (h_n, h_c) = self.rnn(r_in)
 
-
             # Forward pass through the FC layers
             if self.activation == 'relu':
                 if self.numLSTMCells == 1:
@@ -176,10 +184,28 @@ class VINet(nn.Module):
                 else:
                     output_fc2 = F.selu(self.fc2(output_fc1))
 
-
             output = self.fc_out(output_fc2)
 
-            return output
+            if isFirst :
+                self.se3comp_output = xyzq
+# For save last output once oh I missed something
+
+            self.se3comp_output[:,:,[3,4,5,6]] = self.se3comp_output[:,:,[6,3,4,5]]
+            print('before se3comp :', self.se3comp_output)
+            self.se3comp_output = self.se3comp(self.se3comp_output.view(1,7,-1) , output.view(1, 6, -1))
+            print('after se3comp :', self.se3comp_output)
+            self.se3comp_output[:,:,[3,4,5,6]] = self.se3comp_output[:,:,[6,3,4,5]]
+            print('after se3comp and rearange it :', self.se3comp_output)
+            raise Exception
+            # TODO : 1. change order : ww wx wy wz => wx wy wz ww 2020-06-15
+            # TODO : 2. move se3comp to Trainer.py ( should be good )
+            # TODO : 3. Clearly Coding
+
+            output_abs = self.linear_out(self.se3comp_output.view(1,1,-1))
+            self.se3comp_output = output_abs
+# It's better assign after pass through FC layer?
+
+            return output, output_abs
 
     # Initialize the weights of the network
     def init_weights(self):

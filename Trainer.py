@@ -100,28 +100,29 @@ class Trainer():
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
             # Get the next frame
-            inp, imu, r6, xyzq, _, _, _,timestamp, endOfSeq = self.train_set[i]
-            pred_r6 = self.model.forward(inp, imu, xyzq)
+            inp, imu, r6, xyzq, _, _, _, timestamp, endOfSeq = self.train_set[i]
+
+            isFirst = self.abs_traj is None
+            # if isFirst:
+            #     self.abs_traj = xyzq.data.cpu()[0][0]
+            pred_r6, abs_traj_input = self.model.forward(inp, imu, xyzq, isFirst=isFirst)
             # del inp
             # del imu
-            if self.abs_traj is None:
-                # TODO : 여기 초기값 잘 부르고 잘 적분해서 계산하고 있는지 확인해야됨.
-                self.abs_traj = xyzq.data.cpu()[0][0]
-                # Feed it through the model
-            numarr = pred_r6.data.cpu().numpy()[0][0]
-            # print('start :',self.abs_traj)
-            # print('numarr :', numarr)
 
-            self.abs_traj = se3qua.accu(self.abs_traj,numarr)
-            # print('abs_traj :', self.abs_traj)
-
-
-            abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
-            abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
-            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
-            # print(abs_traj_input)
-            # raise Exception()
-
+            # # Feed it through the model
+            # numarr = pred_r6.data.cpu().numpy()[0][0]
+            # # print('start :',self.abs_traj)
+            # # print('numarr :', numarr)
+            #
+            # self.abs_traj = se3qua.accu(self.abs_traj,numarr)
+            # # print('abs_traj :', self.abs_traj)
+            #
+            #
+            # abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
+            # abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
+            # abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
+            # # print(abs_traj_input)
+            # # raise Exception()
             curloss_r6= Variable(self.args.scf * (torch.dist(pred_r6, r6) ** 2), requires_grad=False)
             curloss_xyzq = Variable(torch.dist(abs_traj_input, xyzq) ** 2, requires_grad=False)
 
@@ -270,26 +271,27 @@ class Trainer():
             inp, imu, r6, xyzq, seq, frame1, frame2, timestamp, endOfSeq = self.val_set[i]
 
             metadata = np.asarray([timestamp])
-
+            isFirst = self.abs_traj is None
             # Feed it through the model
-            pred_r6 = self.model.forward(inp, imu, xyzq)
-            numarr = pred_r6.data.cpu().detach().numpy()[0][0]
+            pred_r6, abs_traj_input = self.model.forward(inp, imu, xyzq, isFirst=isFirst)
+            abs_traj_input_temp = abs_traj_input.cpu().detach()
+            # numarr = pred_r6.data.cpu().detach().numpy()[0][0]
 
-            if self.abs_traj is None:
-                self.abs_traj = xyzq.data.cpu().detach()[0][0]
+            # if self.abs_traj is None:
+            #     self.abs_traj = xyzq.data.cpu().detach()[0][0]
             if traj_pred is None:
-                traj_pred = np.concatenate((metadata, self.abs_traj.numpy()), axis=0)
+                traj_pred = np.concatenate((metadata, xyzq.data.cpu().detach()[0][0].numpy()), axis=0)
                 traj_pred = np.resize(traj_pred, (1, -1))
 
 
-            self.abs_traj = se3qua.accu(self.abs_traj, numarr)
+            # self.abs_traj = se3qua.accu(self.abs_traj, numarr)
 
-            cur_pred = np.concatenate((metadata, self.abs_traj), axis=0)
+            cur_pred = np.concatenate((metadata, abs_traj_input_temp.squeeze()), axis=0)
             traj_pred = np.append(traj_pred, np.resize(cur_pred, (1, -1)), axis=0)
 
-            abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
-            abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
-            abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
+            # abs_traj_input = np.expand_dims(self.abs_traj, axis=0)
+            # abs_traj_input = np.expand_dims(abs_traj_input, axis=0)
+            # abs_traj_input = Variable(torch.from_numpy(abs_traj_input).type(torch.FloatTensor)).cuda()
 
 
             # Store losses (for further analysis)
