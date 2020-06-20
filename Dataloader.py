@@ -162,6 +162,7 @@ class Dataloader(Dataset):
 		inputTensor = (pair.float()).cuda()
 		inputTensor = inputTensor * torch.from_numpy(np.asarray([1. / 255.], \
 																dtype = np.float32)).cuda()
+
 		# Load pose ground-truth
 		curPoseDir = os.path.join(self.poseDir, str(seqIdx).zfill(2))
 
@@ -193,12 +194,12 @@ class Dataloader(Dataset):
 		# 					   dtype=np.float32, comments='#')
 		imu_data = self.imu_data_dict[seqIdx]
 		imu_data = imu_data[:,1:]
-		frame1_imu =imu_data[int(imu_index_1):int(imu_index_2)+1]
+		# frame1_imu =imu_data[int(imu_index_1):int(imu_index_2)+1]
+		frame1_imu =imu_data[int(imu_index_1):int(imu_index_1)+11]
 
 		imu = np.resize(frame1_imu, (1,len(frame1_imu),6))
 		imu = torch.from_numpy(imu).type(torch.FloatTensor).cuda()
 		# print('Pose :',pose2.shape)
-		# print('imu :', imu.shape)
 		return inputTensor, imu, pose1, pose2, seqIdx, frame1, frame2,timestamp, endOfSequence
 
 	def preprocessImg(self, img):

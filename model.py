@@ -4,10 +4,10 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable as V
 from utils.util import correlate, conv
 from layers.se3comp_pytorch.SE3Comp import SE3Comp
-
+from torch.autograd import Function
+from torch.autograd import Variable
 # DeepVO model
 class VINet(nn.Module):
 
@@ -71,27 +71,34 @@ class VINet(nn.Module):
         self.conv4 = conv(self.batchNorm, 256, 512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512, 512)
         self.conv5 = conv(self.batchNorm, 512, 512, stride=2)
-        self.conv5_1 = conv(self.batchNorm, 512, 512)
+        self.conv5_1 = conv(self.batchNorm, 512, 512, stride=1,)
         self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
         self.conv6_1 = conv(self.batchNorm, 1024, 1024)
 
+        ###Test for seungyeon
+        self.imulstm = nn.LSTMCell(6,6)
+        self.corelstm1 = nn.LSTMCell(61513,1024)
+        self.corelstm2 = nn.LSTMCell(1024,1024)
+        self.reset_hidden_states()
 
-        self.rnnIMU = nn.LSTM(
-            input_size=6,
-            hidden_size=6, #hidden_units_imu[0],
-            num_layers=2,
-            batch_first=True
-        )
-        self.rnnIMU.cuda()
 
-        self.rnn = nn.LSTM(
-            input_size=6157,
-            # input_size=98317,
-            hidden_size=hidden_units_LSTM[0],
-            num_layers =2,
-            batch_first=True
-        )
-        self.rnn.cuda()
+        ###
+        # self.rnnIMU = nn.LSTM(
+        #     input_size=6,
+        #     hidden_size=6, #hidden_units_imu[0],
+        #     num_layers=2,
+        #     batch_first=True
+        # )
+        # self.rnnIMU.cuda()
+        #
+        # self.rnn = nn.LSTM(
+        #     # input_size=6157,
+        #     input_size=98317,
+        #     hidden_size=hidden_units_LSTM[0],
+        #     num_layers =2,
+        #     batch_first=True
+        # )
+        # self.rnn.cuda()
 
         self.fc1 = nn.Linear(self.hidden_units_LSTM[self.numLSTMCells - 1], 128)
         self.fc1.cuda()
@@ -110,6 +117,36 @@ class VINet(nn.Module):
         self.linear_out = nn.Linear(7,7)
         self.linear_out.cuda()
 
+    ###Test for seungyeon
+    def reset_hidden_states(self, size=1, zero=True):
+        if zero == True:
+            self.hx1 = Variable(torch.zeros(size, 1024))
+            self.cx1 = Variable(torch.zeros(size, 1024))
+            self.hx2 = Variable(torch.zeros(size, 1024))
+            self.cx2 = Variable(torch.zeros(size, 1024))
+            self.imu_h1 = Variable(torch.zeros(11, 6))
+            self.imu_c1 = Variable(torch.zeros(11, 6))
+            self.imu_h2 = Variable(torch.zeros(11, 6))
+            self.imu_c2 = Variable(torch.zeros(11, 6))
+
+        else:
+            self.hx1 = Variable(self.hx1.data)
+            self.cx1 = Variable(self.cx1.data)
+            self.hx2 = Variable(self.hx2.data)
+            self.cx2 = Variable(self.cx2.data)
+            self.imu_h1 = Variable(self.imu_h1.data)
+            self.imu_c1 = Variable(self.imu_c1.data)
+            self.imu_h2 = Variable(self.imu_h2.data)
+            self.imu_c2 = Variable(self.imu_c2.data)
+        if next(self.parameters()).is_cuda ==True:
+            self.hx1 = self.hx1.cuda()
+            self.cx1 = self.cx1.cuda()
+            self.hx2 = self.hx2.cuda()
+            self.cx2 = self.cx2.cuda()
+            self.imu_h1 = self.imu_h1.cuda()
+            self.imu_c1 = self.imu_c1.cuda()
+            self.imu_h2 = self.imu_h2.cuda()
+            self.imu_c2 = self.imu_c2.cuda()
 
     def forward(self, x, imu, xyzq, isFirst, reset_hidden=False):
         if not self.batchNorm:
@@ -135,7 +172,7 @@ class VINet(nn.Module):
             x = self.conv5_1(x)
             # x = (F.leaky_relu(self.conv(x)))
             x = self.conv6(x)
-            x = self.conv6_1(x)
+            # x = self.conv6_1(x)
             # imu = imu.view(11,1,6)
 
             # if reset_hidden is True:
@@ -148,54 +185,70 @@ class VINet(nn.Module):
             #     self.h1, self.c1 = self.rnnIMU(imu[i], (self.h1, self.c1))
             #     self.h2, self.c2 = self.rnnIMU(self.h1, (self.h2, self.c2))
 
-            imu_out, (imu_n,imu_c) = self.rnnIMU(imu)
-            imu_out = imu_out[:,-1,:]
-            imu_out = imu_out.unsqueeze(1)
+            # imu_out, (imu_n,imu_c) = self.rnnIMU(imu)
+            # imu_out = imu_out[:,-1,:]
+            # imu_out = imu_out.unsqueeze(1)
+            #
+            # r_in = x.view(1, 1, -1)
+            # r_in = torch.cat((r_in, imu_out), 2)
+            # r_in = torch.cat((r_in, xyzq), 2)
+            #
+            # r_out, (h_n, h_c) = self.rnn(r_in)
+            ##Test for Seungyron
+            imu = imu.view(11,6)
+            # print(imu.shape)
+            self.imu_h1, self.imu_c1 = self.imulstm(imu,(self.imu_h1, self.imu_c1))
+            self.imu_h2, self.imu_c2 = self.imulstm(self.imu_h1,(self.imu_h2,self.imu_c2))
+            imu_out = self.imu_h2
 
-            r_in = x.view(1, 1, -1)
-            r_in = torch.cat((r_in, imu_out), 2)
-            r_in = torch.cat((r_in, xyzq), 2)
 
-            r_out, (h_n, h_c) = self.rnn(r_in)
+            x = x.view(1,-1)
+            # print(x.shape)
+            # print(imu_out.shape)
+            imu_out = imu_out.view(1,-1)
+            x = torch.cat((x,imu_out),dim=1)
+            x = torch.cat((x,xyzq.view(1,-1)),dim=1)
+            self.hx1, self.cx1 = self.corelstm1(x,(self.hx1,self.cx1))
+            x = self.hx1
+            self.hx2, self.cx2 = self.corelstm2(x,(self.hx2,self.cx2))
+            x= self.hx2
+            x = self.fc1(x)
+            x = self.fc2(x)
 
-            # Forward pass through the FC layers
-            if self.activation == 'relu':
-                if self.numLSTMCells == 1:
-                    output_fc1 = F.relu(self.fc1(r_out))
-                else:
-                    output_fc1 = F.relu(self.fc1(r_out))
-                if self.dropout is True:
-                    output_fc2 = F.dropout(F.relu(self.fc2(output_fc1)), p=self.drop_ratio, \
-                                           training=self.training)
-                else:
-                    output_fc2 = F.relu(self.fc2(output_fc1))
-            elif self.activation == 'selu':
-                """
-                output_fc1 = F.selu(self.fc1(lstm_final_output))
-                """
-                if self.numLSTMCells == 1:
-                    output_fc1 = F.selu(self.fc1(r_out))
-                else:
-                    output_fc1 = F.selu(self.fc1(r_out))
-                # output_fc1 = F.selu(self.fc1(self.h2))
-                if self.dropout is True:
-                    output_fc2 = F.dropout(F.selu(self.fc2(output_fc1)), p=self.drop_ratio, \
-                                           training=self.training)
-                else:
-                    output_fc2 = F.selu(self.fc2(output_fc1))
 
-            output = self.fc_out(output_fc2)
+            ###
+            # # Forward pass through the FC layers
+            # if self.activation == 'relu':
+            #     if self.numLSTMCells == 1:
+            #         output_fc1 = F.relu(self.fc1(r_out))
+            #     else:
+            #         output_fc1 = F.relu(self.fc1(r_out))
+            #     if self.dropout is True:
+            #         output_fc2 = F.dropout(F.relu(self.fc2(output_fc1)), p=self.drop_ratio, \
+            #                                training=self.training)
+            #     else:
+            #         output_fc2 = F.relu(self.fc2(output_fc1))
+            # elif self.activation == 'selu':
+            #     """
+            #     output_fc1 = F.selu(self.fc1(lstm_final_output))
+            #     """
+            #     if self.numLSTMCells == 1:
+            #         output_fc1 = F.selu(self.fc1(r_out))
+            #     else:
+            #         output_fc1 = F.selu(self.fc1(r_out))
+            #     # output_fc1 = F.selu(self.fc1(self.h2))
+            #     if self.dropout is True:
+            #         output_fc2 = F.dropout(F.selu(self.fc2(output_fc1)), p=self.drop_ratio, \
+            #                                training=self.training)
+            #     else:
+            #         output_fc2 = F.selu(self.fc2(output_fc1))
+            #
+            output = self.fc_out(x)
 
             if isFirst :
                 self.se3comp_output = xyzq
 
             self.se3comp_output = self.se3comp(self.se3comp_output.view(1,7,-1) , output.view(1, 6, -1))
-            # TODO : 1. change order : ww wx wy wz => wx wy wz ww 2020-06-15
-            # TODO : 2. move se3comp to Trainer.py ( should be good )
-            # TODO : 3. Clearly Coding
-
-            ## TODO : ㄸ로스를 박아야한다. 백워드로. 이 앱솔르트 로스를. 다녀와서 ^^
-
             output_abs = self.linear_out(self.se3comp_output.view(1,1,-1))
             self.se3comp_output = output_abs
 
@@ -226,12 +279,15 @@ class VINet(nn.Module):
                     elif 'bias' in name:
                         nn.init.constant_(param, 0.)
 
-    # def detach_LSTM_hidden(self):
-    #     self.h1 = self.h1.detach()
-    #     self.c1 = self.c1.detach()
-    #     self.h2 = self.h2.detach()
-    #     self.c2 = self.c2.detach()
-
+    def detach_LSTM_hidden(self):
+        self.hx1 = self.hx1.detach()
+        self.cx1 = self.cx1.detach()
+        self.hx2 = self.hx2.detach()
+        self.cx2 = self.cx2.detach()
+        self.imu_h1 = self.imu_h1.detach()
+        self.imu_c1 = self.imu_c1.detach()
+        self.imu_h2 = self.imu_h2.detach()
+        self.imu_c2 = self.imu_c2.detach()
     # def reset_LSTM_hidden(self):
     #     self.h1 = torch.zeros(1, 11, self.hidden_units_imu[0])
     #     self.c1 = torch.zeros(1, 11, self.hidden_units_imu[0])

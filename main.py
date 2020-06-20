@@ -104,6 +104,7 @@ elif arg.modelType == 'our_model':
 
 # Load a pretrained DeepVO model
 if arg.loadModel == 'vinet':
+	#TODO: MODEL LOAD WEIGHT
 	# deepVO = torch.load(cmd.loadModel)
 	pass
 else:
@@ -147,10 +148,10 @@ bestValLoss = np.inf
 
 # Create datasets for the current epoch
 info_dict = DataInfo()
-train_seq = [0, 1, 2, 3, 4, 8, 9]
+train_seq = [0]#, 1, 2]#, 3, 4, 8, 9]
 train_startFrames = info_dict.get_startFrames(train_seq)
 train_endFrames = info_dict.get_endFrames(train_seq)
-val_seq = [5, 6, 7, 10]
+val_seq = [5, 6]#, 7, 10]
 val_startFrames = info_dict.get_startFrames(val_seq)
 val_endFrames = info_dict.get_endFrames(val_seq)
 
@@ -194,7 +195,7 @@ for epoch in range(arg.nepochs):
 					  scheduler=None)
 
 
-	# Training loop
+	# # Training loop
 	print('===> Training: ' + str(epoch + 1) + '/' + str(arg.nepochs))
 	startTime = time.time()
 	r6Losses_train_cur, poseLosses_train_cur, totalLosses_train_cur = trainer.train()
