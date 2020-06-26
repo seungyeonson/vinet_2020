@@ -65,6 +65,8 @@ class Trainer():
 
         # Switch model to train mode
         self.model.train()
+        for name, param in self.model.named_parameters():
+            print(name, param.data)
 
         # Check if maxEpochs have elapsed
         if self.curEpoch >= self.maxEpochs:
@@ -166,7 +168,7 @@ class Trainer():
             elapsedBatches += 1
 
             # if endOfSeq is True:
-            if True :#endOfSeq is True:
+            if endOfSeq is True:
                 elapsedBatches = 0
 
                 # if self.args.gamma > 0.0:
@@ -198,15 +200,16 @@ class Trainer():
                 #         reg_loss += paramsDict['rnn.bias_ih_l1'].norm(2)
                 #         reg_loss += paramsDict['rnn.bias_Hh_l1'].norm(2)
                 #     self.loss = sum([self.args.gamma * reg_loss, self.loss])
-                print("backwarding")
+                # print("backwarding")
                 # Compute gradients
                 # self.model.zero_grad()
                 self.loss.backward()
                 # for p in self.model.parameters():
                 #     p.data.add_(p.grad.data, alpha=self.args.lr)
-                print("r6",np.mean(r6Loss_seq))
-                print("rot",np.mean(rotLoss_seq))
-                print("trans",np.mean(transLoss_seq))
+
+                # print("r6",np.mean(r6Loss_seq))
+                # print("rot",np.mean(rotLoss_seq))
+                # print("trans",np.mean(transLoss_seq))
 
 
                 # Perform gradient clipping, if enabled

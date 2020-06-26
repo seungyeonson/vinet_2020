@@ -40,7 +40,9 @@ class Dataloader(Dataset):
 		# Dimensions to be fed in the input
 		self.width = width
 		self.height = height
-		self.channels = 1
+		# TODO : Check2
+		self.channels = 3
+		# self.channels = 1
 
 		# List of sequences that are part of the dataset
 		# If nothing is specified, use sequence 1 as default
@@ -217,7 +219,10 @@ class Dataloader(Dataset):
 		# img.show()
 		img = np.resize(img,(self.width, self.height))
 		img = np.array(img)
-		img = np.expand_dims(img,0)
+		# TODO: Check4
+		# img = np.expand_dims(img,0)
+
+		img = np.array([img, img, img])
 
 		# Torch expects NCWH
 		try:

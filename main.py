@@ -113,6 +113,20 @@ else:
 	# CUDAfy
 	VINet.cuda()
 
+
+# TODO : Check1
+if arg.loadModelCNN is not None :
+	pretrained_w = torch.load(arg.loadModelCNN)
+	pretrained_dict = pretrained_w['state_dict']
+	model_dict = VINet.state_dict()
+
+	# 1. filter out unnecessary keys
+	pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+	# 2. overwrite entries in the existing state dict
+	model_dict.update(pretrained_dict)
+	# 3. load the new state dict
+	VINet.load_state_dict(model_dict)
+
 print('Loaded! Good to launch!')
 
 ########################################################################
@@ -151,7 +165,7 @@ info_dict = DataInfo()
 train_seq = [0]#, 1, 2]#, 3, 4, 8, 9]
 train_startFrames = info_dict.get_startFrames(train_seq)
 train_endFrames = info_dict.get_endFrames(train_seq)
-val_seq = [5, 6]#, 7, 10]
+val_seq = [5]#, 6]#, 7, 10]
 val_startFrames = info_dict.get_startFrames(val_seq)
 val_endFrames = info_dict.get_endFrames(val_seq)
 
@@ -165,7 +179,7 @@ val_endFrames = info_dict.get_endFrames(val_seq)
 
 
 for epoch in range(arg.nepochs):
-	
+	#TODO : 에폭이 지나가면 왜 가중치는 그대로인지... 원인을 파악하고 해결해야한다.
 	print('===============> Starting epoch: '+str(epoch+1) + '/'+str(arg.nepochs))
 
 	train_seq_cur_epoch = []

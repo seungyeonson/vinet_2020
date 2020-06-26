@@ -1,7 +1,8 @@
 result/
 .idea/
 __pycache__/
+flownet_weight/
+tttt.py
 args.py
 args.pyc
 .gitignore
-tttt.py

@@ -62,7 +62,8 @@ class VINet(nn.Module):
         self.bias = not self.batchNorm
 
 
-        self.conv1 = conv(self.batchNorm, 1, 64, kernel_size=7, stride=2)
+        # self.conv1 = conv(self.batchNorm, 1, 64, kernel_size=7, stride=2)
+        self.conv1 = conv(self.batchNorm, 3, 64, kernel_size=7, stride=2)
         self.conv2 = conv(self.batchNorm, 64, 128, kernel_size=5, stride=2)
         self.conv3 = conv(self.batchNorm, 128, 256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256, 32, kernel_size=1, stride=1)
@@ -77,7 +78,8 @@ class VINet(nn.Module):
 
         ###Test for seungyeon
         self.imulstm = nn.LSTMCell(6,6)
-        self.corelstm1 = nn.LSTMCell(61513,1024)
+        self.corelstm1 = nn.LSTMCell(6217,1024)
+        # self.corelstm1 = nn.LSTMCell(61513,1024)
         self.corelstm2 = nn.LSTMCell(1024,1024)
         self.reset_hidden_states()
 
@@ -92,7 +94,7 @@ class VINet(nn.Module):
         # self.rnnIMU.cuda()
         #
         # self.rnn = nn.LSTM(
-        #     # input_size=6157,
+        #     input_size=6157,
         #     input_size=98317,
         #     hidden_size=hidden_units_LSTM[0],
         #     num_layers =2,
@@ -150,8 +152,9 @@ class VINet(nn.Module):
 
     def forward(self, x, imu, xyzq, isFirst, reset_hidden=False):
         if not self.batchNorm:
-            x1 = x[:,0:1,:,:]
-            x2 = x[:,1:,:,:]
+            # TODO: Check 5
+            x1 = x[:,0:3,:,:]
+            x2 = x[:,3:,:,:]
 
             x1 = self.conv1(x1)
             x1 = self.conv2(x1)
